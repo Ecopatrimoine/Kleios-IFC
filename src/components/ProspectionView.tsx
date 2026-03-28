@@ -31,7 +31,6 @@ interface ApiDirigeant {
 interface ApiEntreprise {
   siren:                    string;
   nom_raison_sociale:       string;
-  nom_commercial:           string | null;
   dirigeants:               ApiDirigeant[] | null;
   date_creation:            string | null;
   siege: {
@@ -44,6 +43,8 @@ interface ApiEntreprise {
     activite_principale:          string;
     libelle_activite_principale:  string;
     tranche_effectif_salarie:     string | null;
+    nom_commercial:               string | null;
+    liste_enseignes:              string[] | null;
   };
   nature_juridique:         string;
   libelle_nature_juridique: string;
@@ -142,9 +143,13 @@ function getPrincipalDirigeant(e: ApiEntreprise): { nom: string; qualite: string
 }
 
 function getNomCommercial(e: ApiEntreprise): string | null {
-  const nc = e.nom_commercial?.trim();
-  if (!nc || nc === e.nom_raison_sociale.trim()) return null;
-  return nc;
+  // L'API retourne le nom commercial dans siege.nom_commercial (pas à la racine)
+  // siege.liste_enseignes contient les enseignes supplémentaires déclarées
+  const nc   = e.siege.nom_commercial?.trim();
+  const ens  = e.siege.liste_enseignes?.[0]?.trim();
+  const best = nc || ens || null;
+  if (!best || best === e.nom_raison_sociale.trim()) return null;
+  return best;
 }
 
 function isAlreadyInKleios(siret: string, contacts: ContactRecord[]): boolean {
