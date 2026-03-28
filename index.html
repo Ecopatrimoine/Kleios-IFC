@@ -1,10 +1,52 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>kleios</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- ── Titre & description ── -->
+    <title>Kleios IFC</title>
+    <meta name="description" content="CRM commercial pour centres de formation en alternance — Kleios IFC" />
+    <meta name="application-name" content="Kleios IFC" />
+
+    <!-- ── Favicon navigateur ── -->
+    <link rel="icon" type="image/x-icon"            href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png" />
+
+    <!-- ── iOS / iPadOS écran d'accueil ── -->
+    <link rel="apple-touch-icon"                href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
+
+    <!-- ── PWA manifest ── -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- ── Couleur de thème (barre de navigation mobile) ── -->
+    <meta name="theme-color" content="#E8722A" />
+
+    <!-- ── iOS PWA ── -->
+    <meta name="apple-mobile-web-app-capable"          content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title"            content="Kleios IFC" />
+
+    <!-- ── Android PWA ── -->
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- ── Windows tile ── -->
+    <meta name="msapplication-TileImage" content="/icon-144.png" />
+    <meta name="msapplication-TileColor" content="#E8722A" />
+
+    <!-- ── Service Worker ── -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .catch(() => { /* SW optionnel — pas bloquant */ });
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
