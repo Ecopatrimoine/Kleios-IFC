@@ -29,6 +29,11 @@ export interface CabinetSettings {
   googlePlacesApiKey?: string;  // clé Google Places API — gérée par le client
   campus: string;       // campus IFC du RRE
   isAdmin: boolean;     // accès multi-campus
+  // Objectifs — fixés par le directeur/admin, consultables par les RRE
+  objectifVisitesMois: number;        // visites tuteurs / mois
+  objectifTauxPlacement: number;      // taux placement cible (%)
+  objectifPartenaires: number;        // nb entreprises partenaires cible
+  objectifProspects: number;          // nb prospects à contacter / mois
 }
 
 // ------------------------------------------------------------

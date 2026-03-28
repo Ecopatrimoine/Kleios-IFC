@@ -88,8 +88,6 @@ interface EnrichedData {
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const ORANGE = "#F26522";
-const NAVY   = "#1A2E44";
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL ?? "";
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 const API_PROXY     = `${SUPABASE_URL}/functions/v1/search-entreprises`;
@@ -122,192 +120,12 @@ const SECTIONS_NAF = [
   { code: "S", label: "Autres services aux particuliers" },
 ];
 
-// Codes APE par section — les plus courants pour l'alternance
-const CODES_APE_PAR_SECTION: Record<string, Array<{ code: string; label: string }>> = {
-  G: [
-    { code: "45.11Z", label: "Commerce de voitures et véhicules légers" },
-    { code: "45.20A", label: "Entretien et réparation de véhicules" },
-    { code: "46.10Z", label: "Agents de gros" },
-    { code: "46.90Z", label: "Commerce de gros non spécialisé" },
-    { code: "47.11A", label: "Supérettes" },
-    { code: "47.11B", label: "Supermarchés" },
-    { code: "47.11C", label: "Hypermarchés" },
-    { code: "47.19A", label: "Grandes surfaces à prédominance alimentaire" },
-    { code: "47.25Z", label: "Commerce de détail de boissons" },
-    { code: "47.71Z", label: "Commerce de détail habillement" },
-    { code: "47.72A", label: "Commerce de détail chaussures" },
-    { code: "47.78C", label: "Autres commerces de détail spécialisés" },
-    { code: "47.89Z", label: "Commerce sur marchés" },
-  ],
-  I: [
-    { code: "55.10Z", label: "Hôtels et hébergements similaires" },
-    { code: "55.20Z", label: "Hébergements touristiques et court séjour" },
-    { code: "56.10A", label: "Restauration traditionnelle" },
-    { code: "56.10B", label: "Cafétérias et libres-services" },
-    { code: "56.10C", label: "Restauration de type rapide" },
-    { code: "56.21Z", label: "Services des traiteurs" },
-    { code: "56.29A", label: "Restauration collective sous contrat" },
-    { code: "56.29B", label: "Autres services de restauration" },
-    { code: "56.30Z", label: "Débits de boissons" },
-  ],
-  F: [
-    { code: "41.10A", label: "Promotion immobilière résidentielle" },
-    { code: "41.20A", label: "Construction maisons individuelles" },
-    { code: "41.20B", label: "Construction autres bâtiments" },
-    { code: "42.11Z", label: "Construction routes et autoroutes" },
-    { code: "43.11Z", label: "Travaux de démolition" },
-    { code: "43.12A", label: "Travaux de terrassement courants" },
-    { code: "43.21A", label: "Travaux d'installation électrique" },
-    { code: "43.22A", label: "Travaux installation eau et gaz" },
-    { code: "43.29A", label: "Mise en place menuiseries métalliques" },
-    { code: "43.31Z", label: "Travaux de plâtrerie" },
-    { code: "43.32A", label: "Travaux de menuiserie bois et matières plastiques" },
-    { code: "43.33Z", label: "Travaux de revêtement des sols et des murs" },
-    { code: "43.34Z", label: "Travaux de peinture et vitrerie" },
-    { code: "43.91A", label: "Travaux de charpente" },
-    { code: "43.99C", label: "Travaux de maçonnerie générale" },
-  ],
-  M: [
-    { code: "69.10Z", label: "Activités juridiques" },
-    { code: "69.20Z", label: "Activités comptables" },
-    { code: "70.10Z", label: "Activités des sièges sociaux" },
-    { code: "70.21Z", label: "Conseil en relations publiques et communication" },
-    { code: "70.22Z", label: "Conseil en gestion" },
-    { code: "71.11Z", label: "Activités d'architecture" },
-    { code: "71.12B", label: "Ingénierie, études techniques" },
-    { code: "73.11Z", label: "Activités des agences de publicité" },
-    { code: "73.12Z", label: "Régie publicitaire" },
-    { code: "74.10Z", label: "Activités spécialisées de design" },
-    { code: "74.20Z", label: "Activités photographiques" },
-    { code: "74.90B", label: "Activités spécialisées diverses" },
-  ],
-  J: [
-    { code: "58.11Z", label: "Édition de livres" },
-    { code: "59.11A", label: "Production de films" },
-    { code: "60.10Z", label: "Édition et diffusion radio" },
-    { code: "61.10Z", label: "Télécommunications filaires" },
-    { code: "61.20Z", label: "Télécommunications sans fil" },
-    { code: "62.01Z", label: "Programmation informatique" },
-    { code: "62.02A", label: "Conseil en systèmes informatiques" },
-    { code: "62.03Z", label: "Gestion d'installations informatiques" },
-    { code: "63.11Z", label: "Traitement de données, hébergement" },
-    { code: "63.12Z", label: "Portails Internet" },
-  ],
-  P: [
-    { code: "85.10Z", label: "Enseignement pré-primaire" },
-    { code: "85.20Z", label: "Enseignement primaire" },
-    { code: "85.31Z", label: "Enseignement secondaire général" },
-    { code: "85.32Z", label: "Enseignement secondaire technique ou professionnel" },
-    { code: "85.41Z", label: "Enseignement post-secondaire non supérieur" },
-    { code: "85.42Z", label: "Enseignement supérieur" },
-    { code: "85.51Z", label: "Enseignement de disciplines sportives" },
-    { code: "85.52Z", label: "Enseignement culturel" },
-    { code: "85.59A", label: "Formation continue d'adultes" },
-    { code: "85.59B", label: "Autres enseignements" },
-  ],
-  Q: [
-    { code: "86.10Z", label: "Activités hospitalières" },
-    { code: "86.21Z", label: "Activités de médecine générale" },
-    { code: "86.22A", label: "Activités de radiodiagnostic et radiothérapie" },
-    { code: "86.23Z", label: "Pratique dentaire" },
-    { code: "86.90F", label: "Centres de collecte et banques d'organes" },
-    { code: "87.10A", label: "Hébergement médicalisé pour personnes âgées" },
-    { code: "87.30A", label: "Hébergement social pour personnes âgées" },
-    { code: "88.10A", label: "Aide à domicile" },
-    { code: "88.91A", label: "Accueil de jeunes enfants" },
-  ],
-  N: [
-    { code: "77.11A", label: "Location de courte durée de voitures" },
-    { code: "78.10Z", label: "Activités des agences de placement" },
-    { code: "78.20Z", label: "Activités des agences de travail temporaire" },
-    { code: "79.11Z", label: "Activités des agences de voyage" },
-    { code: "79.12Z", label: "Activités des voyagistes" },
-    { code: "81.10Z", label: "Activités combinées de soutien aux bâtiments" },
-    { code: "81.21Z", label: "Nettoyage courant des bâtiments" },
-    { code: "82.11Z", label: "Services administratifs combinés" },
-    { code: "82.30Z", label: "Organisation de salons professionnels" },
-  ],
-  R: [
-    { code: "90.01Z", label: "Arts du spectacle vivant" },
-    { code: "90.03A", label: "Création artistique relevant des arts plastiques" },
-    { code: "91.01Z", label: "Gestion des bibliothèques et archives" },
-    { code: "92.00Z", label: "Organisation de jeux de hasard et d'argent" },
-    { code: "93.11Z", label: "Gestion d'installations sportives" },
-    { code: "93.12Z", label: "Activités de clubs de sports" },
-    { code: "93.13Z", label: "Activités des centres de culture physique" },
-    { code: "93.19Z", label: "Autres activités liées au sport" },
-    { code: "93.21Z", label: "Activités des parcs d'attractions et à thèmes" },
-    { code: "93.29Z", label: "Autres activités récréatives" },
-  ],
-  C: [
-    { code: "10.11Z", label: "Transformation et conservation de la viande" },
-    { code: "10.71A", label: "Fabrication industrielle de pain" },
-    { code: "10.71B", label: "Cuisson de produits de boulangerie" },
-    { code: "10.71C", label: "Boulangerie et boulangerie-pâtisserie" },
-    { code: "10.72Z", label: "Fabrication de biscuits, biscottes" },
-    { code: "13.10Z", label: "Préparation de fibres textiles" },
-    { code: "22.21Z", label: "Fabrication de plaques et tubes en plastique" },
-    { code: "25.11Z", label: "Fabrication de structures métalliques" },
-    { code: "28.41Z", label: "Fabrication de machines-outils" },
-    { code: "33.11Z", label: "Réparation d'ouvrages en métaux" },
-  ],
-  H: [
-    { code: "49.10Z", label: "Transport ferroviaire interurbain" },
-    { code: "49.20Z", label: "Transport ferroviaire de fret" },
-    { code: "49.31Z", label: "Transports urbains et suburbains" },
-    { code: "49.32Z", label: "Transports de voyageurs par taxis" },
-    { code: "49.39A", label: "Transports routiers réguliers de voyageurs" },
-    { code: "49.41A", label: "Transports routiers de fret interurbains" },
-    { code: "49.42Z", label: "Transports routiers de déménagement" },
-    { code: "52.10A", label: "Entreposage et stockage frigorifique" },
-    { code: "52.24B", label: "Manutention non portuaire" },
-    { code: "53.10Z", label: "Activités de poste" },
-    { code: "53.20Z", label: "Autres activités de courrier" },
-  ],
-  K: [
-    { code: "64.11Z", label: "Activités de banque centrale" },
-    { code: "64.19Z", label: "Autres intermédiations monétaires" },
-    { code: "64.91Z", label: "Crédit-bail" },
-    { code: "64.99Z", label: "Autres activités de services financiers" },
-    { code: "65.11Z", label: "Assurance-vie" },
-    { code: "65.12Z", label: "Autres assurances" },
-    { code: "65.20Z", label: "Réassurance" },
-    { code: "66.11Z", label: "Administration de marchés financiers" },
-    { code: "66.12Z", label: "Courtage de valeurs mobilières" },
-    { code: "66.21Z", label: "Évaluation des risques et dommages" },
-    { code: "66.22Z", label: "Activités des agents et courtiers d'assurances" },
-  ],
-  L: [
-    { code: "68.10Z", label: "Activités marchands de biens immobiliers" },
-    { code: "68.20A", label: "Location de logements" },
-    { code: "68.20B", label: "Location de terrains" },
-    { code: "68.31Z", label: "Agences immobilières" },
-    { code: "68.32A", label: "Administration d'immeubles résidentiels" },
-    { code: "68.32B", label: "Supports de programmes immobiliers" },
-  ],
-  S: [
-    { code: "94.11Z", label: "Activités des organisations patronales" },
-    { code: "94.20Z", label: "Activités des syndicats de salariés" },
-    { code: "94.91Z", label: "Activités des organisations religieuses" },
-    { code: "95.11Z", label: "Réparation d'ordinateurs" },
-    { code: "95.12Z", label: "Réparation d'équipements de communication" },
-    { code: "95.21Z", label: "Réparation de produits électroniques" },
-    { code: "95.25Z", label: "Réparation d'articles horlogerie et bijouterie" },
-    { code: "96.01A", label: "Blanchisseries-teintureries" },
-    { code: "96.02A", label: "Coiffure" },
-    { code: "96.02B", label: "Soins de beauté" },
-    { code: "96.04Z", label: "Entretien corporel" },
-    { code: "96.09Z", label: "Autres services aux particuliers" },
-  ],
-};
 
-// Seuil 250 salariés = seuil alternance (aide employeur différente)
-// < 250 : codes 00→31 (0 à 249 salariés)
-// ≥ 250 : codes 32→53 (250+)
-const TAILLE_OPTIONS = [
-  { value: "", label: "Toutes tailles" },
-  { value: "00,01,02,03,11,12,21,22,31", label: "< 250 salariés (aide alternance renforcée)" },
-  { value: "32,41,42,51,52,53",           label: "≥ 250 salariés" },
+// categorie_entreprise : paramètre officiel API — seuil 250 sal. = seuil aide alternance
+const CATEGORIE_OPTIONS = [
+  { value: "",       label: "Toutes tailles" },
+  { value: "PME",    label: "PME — moins de 250 salariés (aide alternance renforcée)" },
+  { value: "ETI,GE", label: "250 salariés et plus" },
 ];
 
 const DEPARTEMENTS = [
@@ -326,7 +144,7 @@ const DEPARTEMENTS = [
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px", borderRadius: 7,
   border: "1px solid rgba(26,46,68,0.15)", fontSize: 13,
-  fontFamily: "inherit", outline: "none", color: NAVY, background: "#F9FAFB",
+  fontFamily: "inherit", outline: "none", color: "#2B2B2B", background: "#F9FAFB",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -411,7 +229,7 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: R
 
 function EnrichDrawer({
   entreprise, enriched, enriching, enrichingSet, onClose, onImport,
-  onGoogleEnrich, googleApiKey,
+  onGoogleEnrich, googleApiKey, colorNavy, colorGold,
 }: {
   entreprise: ApiEntreprise | null;
   enriched: EnrichedData | null;
@@ -421,7 +239,11 @@ function EnrichDrawer({
   onImport: (e: ApiEntreprise, enriched: EnrichedData | null) => void;
   onGoogleEnrich?: (e: ApiEntreprise) => void;
   googleApiKey?: string;
+  colorNavy: string;
+  colorGold: string;
 }) {
+  const NAVY   = colorNavy;
+  const ORANGE = colorGold;
   const e      = entreprise;
   const isOpen = !!e;
 
@@ -694,6 +516,7 @@ function EnrichDrawer({
 function ResultCard({
   entreprise, selected, inKleios, onToggle,
   enriched, enriching, onEnrich, onOpenDrawer,
+  colorNavy, colorGold,
 }: {
   entreprise: ApiEntreprise;
   selected: boolean;
@@ -703,7 +526,11 @@ function ResultCard({
   enriching: boolean;
   onEnrich: () => void;
   onOpenDrawer: () => void;
+  colorNavy: string;
+  colorGold: string;
 }) {
+  const NAVY    = colorNavy;
+  const ORANGE  = colorGold;
   const e       = entreprise;
   const hasData = !!(enriched?.tel || enriched?.website);
 
@@ -906,13 +733,16 @@ function filterByMapViewport(
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function ProspectionView({ contacts, userId, onImport, googleApiKey = "" }: ProspectionViewProps) {
+export function ProspectionView({ contacts, userId, onImport, colorNavy, colorGold, googleApiKey = "" }: ProspectionViewProps) {
+  // Couleurs IFC depuis les props (jamais hardcodées)
+  const NAVY   = colorNavy;
+  const ORANGE = colorGold;
   const [codePostal,  setCodePostal]  = useState("");
   const [departement, setDepartement] = useState("");
-  const [sectionNAF,  setSectionNAF]  = useState("");   // section (G, I, F...)
-  const [codeAPE,     setCodeAPE]     = useState("");   // code précis (56.10A)
+  const [sectionNAF,  setSectionNAF]  = useState("");   // section NAF (G, I, F...)
+  const [categorie,   setCategorie]   = useState("");   // PME | ETI,GE | ""
   const [motCle,      setMotCle]      = useState("");
-  const [taille,      setTaille]      = useState("");
+
 
   const [results,  setResults]  = useState<ApiEntreprise[]>([]);
   const [total,    setTotal]    = useState(0);
@@ -920,6 +750,7 @@ export function ProspectionView({ contacts, userId, onImport, googleApiKey = "" 
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
   const [searched, setSearched] = useState(false);
+  const [perPage,  setPerPage]  = useState(25);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -952,55 +783,74 @@ export function ProspectionView({ contacts, userId, onImport, googleApiKey = "" 
   const nouvelles  = displayedResults.length - dansKleios;
 
   // ── Recherche ──
-  const search = useCallback(async (p = 1) => {
+  // Construit les params de base (sans page)
+  const buildParams = useCallback(() => {
+    const params = new URLSearchParams();
+    params.set("per_page", "25");
+    if (motCle.trim())     params.set("q", motCle.trim());
+    if (codePostal.trim()) params.set("code_postal", codePostal.trim());
+    else if (departement)  params.set("departement", departement);
+    if (sectionNAF) params.set("section_activite_principale", sectionNAF);
+    if (categorie) categorie.split(",").forEach(c => params.append("categorie_entreprise", c.trim()));
+    params.set("etat_administratif", "A");
+    return params;
+  }, [motCle, codePostal, departement, sectionNAF, categorie]);
+
+  // Charge une seule page et retourne les résultats
+  const fetchPage = useCallback(async (pageNum: number, baseParams: URLSearchParams): Promise<SearchResult> => {
+    const params = new URLSearchParams(baseParams);
+    params.set("page", String(pageNum));
+    const res = await fetch(`${API_PROXY}?${params}`, {
+      headers: { "Accept": "application/json", "apikey": SUPABASE_ANON },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`Erreur API ${res.status}`);
+    return res.json();
+  }, []);
+
+  const search = useCallback(async (p = 1, forcedPerPage?: number) => {
     setLoading(true); setError("");
     try {
-      const params = new URLSearchParams();
-      params.set("page", String(p));
-      params.set("per_page", "25");
-      if (motCle.trim())     params.set("q", motCle.trim());
-      if (codePostal.trim()) params.set("code_postal", codePostal.trim());
-      else if (departement)  params.set("departement", departement);
-      // Si code APE précis sélectionné → activite_principale (sans point : 5610A pas 56.10A)
-      // sinon section entière
-      if (codeAPE)           params.set("activite_principale", codeAPE.replace(".", ""));
-      else if (sectionNAF)   params.set("section_activite_principale", sectionNAF);
-      if (taille) taille.split(",").forEach(t => params.append("tranche_effectif_salarie", t.trim()));
-      params.set("etat_administratif", "A");
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-      const res = await fetch(`${API_PROXY}?${params}`, {
-        signal: controller.signal,
-        headers: { "Accept": "application/json", "apikey": SUPABASE_ANON },
-      });
-      clearTimeout(timeout);
-      if (!res.ok) throw new Error(`Erreur API ${res.status}`);
-      const data: SearchResult = await res.json();
-      // Filtre localité strict (optionnel) — désactivé par défaut car l'API
-      // retourne des entreprises avec établissement local mais siège ailleurs
-      const filteredResults = filterLocalStrict
-        ? filterByLocalite(data.results, codePostal.trim(), departement)
-        : data.results;
+      const baseParams = buildParams();
+      const nbToLoad = forcedPerPage ?? perPage;
+      const nbPages  = Math.ceil(nbToLoad / 25); // toujours 25 max par appel
 
       if (p === 1) {
-        setResults(filteredResults);
-        setTotal(data.total_results);
+        // Nouvelle recherche — charger nbPages pages en parallèle
+        const pageNums = Array.from({ length: nbPages }, (_, i) => i + 1);
+        const responses = await Promise.all(pageNums.map(n => fetchPage(n, baseParams)));
+
+        const allResults = responses.flatMap(r => r.results ?? []);
+        const total      = responses[0]?.total_results ?? 0;
+
+        const filtered = filterLocalStrict
+          ? filterByLocalite(allResults, codePostal.trim(), departement)
+          : allResults;
+
+        setResults(filtered);
+        setTotal(total);
+        setPage(nbPages);
         setEnrichedMap({}); setEnrichingSet(new Set());
         setSelected(new Set()); setDrawerSiret(null);
+        setSearched(true);
       } else {
-        setResults(prev => [...prev, ...filteredResults]);
+        // "Charger plus" — page suivante simple
+        const data = await fetchPage(p, baseParams);
+        const filtered = filterLocalStrict
+          ? filterByLocalite(data.results ?? [], codePostal.trim(), departement)
+          : data.results ?? [];
+        setResults(prev => [...prev, ...filtered]);
+        setPage(p);
       }
-      setPage(p); setSearched(true);
     } catch (err: any) {
       if (err.name === "AbortError") setError("Délai dépassé — réessayez.");
       else setError(`Erreur : ${err.message ?? "connexion impossible"}`);
     }
     setLoading(false);
-  }, [motCle, codePostal, departement, sectionNAF, codeAPE, taille]);
+  }, [motCle, codePostal, departement, sectionNAF, categorie, perPage, buildParams, fetchPage, filterLocalStrict]);
 
   const handleSearch   = () => { setSelected(new Set()); search(1); };
-  const handleLoadMore = () => search(page + 1);
+  const handleLoadMore = () => search(page + 1, 25); // toujours 25 par chargement supplémentaire
 
   // ── Enrichissement OSM — déclenché à l'ouverture du drawer ──
   // Données légales (dirigeant, nom commercial) déjà dans ApiEntreprise — pas d'appel Pappers
@@ -1214,43 +1064,19 @@ export function ProspectionView({ contacts, userId, onImport, googleApiKey = "" 
           </div>
           <div>
             <label style={{ fontSize: 10, fontWeight: 600, color: "#4A7FA5", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>TAILLE</label>
-            <select value={taille} onChange={e => setTaille(e.target.value)} style={{ ...inp, appearance: "none" }}>
-              {TAILLE_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            <select value={categorie} onChange={e => setCategorie(e.target.value)} style={{ ...inp, appearance: "none" }}>
+              {CATEGORIE_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-          {/* Select 1 : Section NAF */}
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
           <div>
-            <label style={{ fontSize: 10, fontWeight: 600, color: "#4A7FA5", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>SECTEUR (section NAF)</label>
-            <select
-              value={sectionNAF}
-              onChange={e => { setSectionNAF(e.target.value); setCodeAPE(""); }}
-              style={{ ...inp, appearance: "none" }}
-            >
+            <label style={{ fontSize: 10, fontWeight: 600, color: "#4A7FA5", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>SECTEUR D'ACTIVITÉ (section NAF)</label>
+            <select value={sectionNAF} onChange={e => setSectionNAF(e.target.value)} style={{ ...inp, appearance: "none" }}>
               <option value="">— Tous secteurs —</option>
               {SECTIONS_NAF.map(s => <option key={s.code} value={s.code}>{s.code} — {s.label}</option>)}
             </select>
           </div>
-          {/* Select 2 : Code APE précis (conditionnel) */}
-          <div>
-            <label style={{ fontSize: 10, fontWeight: 600, color: "#4A7FA5", letterSpacing: 0.4, display: "block", marginBottom: 4 }}>
-              CODE APE PRÉCIS
-              {!sectionNAF && <span style={{ color: "#C8D8E4", fontWeight: 400 }}> (choisir un secteur d'abord)</span>}
-            </label>
-            <select
-              value={codeAPE}
-              onChange={e => setCodeAPE(e.target.value)}
-              disabled={!sectionNAF}
-              style={{ ...inp, appearance: "none", opacity: sectionNAF ? 1 : 0.45 }}
-            >
-              <option value="">— Tous codes —</option>
-              {sectionNAF && (CODES_APE_PAR_SECTION[sectionNAF] ?? []).map(c => (
-                <option key={c.code} value={c.code}>{c.code} — {c.label}</option>
-              ))}
-            </select>
-          </div>
-          {/* Bouton rechercher */}
           <div style={{ display: "flex", alignItems: "flex-end" }}>
             <button onClick={handleSearch} disabled={loading} style={{
               width: "100%", padding: "9px", borderRadius: 8, border: "none",
@@ -1288,16 +1114,28 @@ export function ProspectionView({ contacts, userId, onImport, googleApiKey = "" 
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 12, color: NAVY }}>
                     <span style={{ fontWeight: 600 }}>{displayedResults.length.toLocaleString("fr-FR")}</span>
+                    {" sur "}<span style={{ fontWeight: 600 }}>{total.toLocaleString("fr-FR")}</span>
                     {filterByMap && results.length !== displayedResults.length && (
-                      <span style={{ color: "#9CA3AF" }}> / {results.length}</span>
-                    )}{" "}entreprises —{" "}
+                      <span style={{ color: "#9CA3AF" }}> (carte)</span>
+                    )}{" "}·{" "}
                     <span style={{ color: ORANGE, fontWeight: 600 }}>{nouvelles} nouvelles</span> ·{" "}
                     <span style={{ color: "#059669", fontWeight: 600 }}>{dansKleios} dans Kleios</span>
                   </div>
-                  <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>
-                    {filterLocalStrict
-                      ? "📍 Filtre actif : sièges dans la zone uniquement"
-                      : "ℹ️ Inclut les entreprises avec établissement local mais siège ailleurs"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 10, color: "#9CA3AF" }}>Charger :</span>
+                    {[25, 50, 100, 200].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => { setPerPage(n); search(1, n); }}
+                        style={{
+                          padding: "2px 8px", borderRadius: 5, fontSize: 10, fontWeight: 600,
+                          border: `1px solid ${perPage === n ? NAVY : "rgba(26,46,68,0.15)"}`,
+                          background: perPage === n ? NAVY : "#fff",
+                          color: perPage === n ? "#fff" : "#6B7280",
+                          cursor: "pointer", fontFamily: "inherit",
+                        }}
+                      >{n}</button>
+                    ))}
                   </div>
                 </div>
                 {/* Bouton filtre siège local */}
@@ -1360,15 +1198,17 @@ export function ProspectionView({ contacts, userId, onImport, googleApiKey = "" 
                       setDrawerSiret(e.siege.siret);
                       handleAutoEnrich(e);
                     }}
+                    colorNavy={colorNavy}
+                    colorGold={colorGold}
                   />
                 ))}
-                {displayedResults.length > 0 && results.length < total && (
+                {results.length < total && (
                   <button onClick={handleLoadMore} disabled={loading} style={{
                     width: "100%", padding: "10px", borderRadius: 8,
                     border: "1px solid rgba(26,46,68,0.15)", background: "#fff",
                     color: NAVY, fontSize: 13, cursor: "pointer", fontFamily: "inherit", marginTop: 4,
                   }}>
-                    {loading ? "Chargement…" : `Charger plus (${results.length}/${total})`}
+                    {loading ? "Chargement…" : `+ 25 résultats (${results.length} / ${total.toLocaleString("fr-FR")} au total)`}
                   </button>
                 )}
                 {displayedResults.length === 0 && !loading && (
@@ -1439,6 +1279,8 @@ export function ProspectionView({ contacts, userId, onImport, googleApiKey = "" 
         onImport={handleImportFromDrawer}
         onGoogleEnrich={handleGoogleEnrich}
         googleApiKey={googleApiKey}
+        colorNavy={colorNavy}
+        colorGold={colorGold}
       />
     </div>
   );

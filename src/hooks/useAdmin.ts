@@ -7,19 +7,65 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 
 export function useAdmin(userEmail: string | null | undefined) {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isAdmin,   setIsAdmin]   = useState(false);
+  const [userRole,  setUserRole]  = useState<UserRole>("rre");
+  const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
     if (!userEmail) { setLoading(false); return; }
+    // Vérifier si admin (super_directeur ou dans table admins)
     supabase.from("admins").select("email").eq("email", userEmail).single()
-      .then(({ data }) => { setIsAdmin(!!data); setLoading(false); });
+      .then(async ({ data: adminData }) => {
+        if (adminData) {
+          // Dans la table admins → super_directeur par défaut
+          setIsAdmin(true);
+          setUserRole("super_directeur");
+        }
+        // Chercher le rôle dans user_roles (prioritaire)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", user.id)
+            .single();
+          if (roleData?.role) {
+            const role = roleData.role as UserRole;
+            setUserRole(role);
+            setIsAdmin(role === "super_directeur");
+          }
+        }
+        setLoading(false);
+      });
   }, [userEmail]);
 
-  return { isAdmin, loading };
+  // Helpers de permission
+  const canEditCampus = (campus: string, userCampus: string) => {
+    if (userRole === "super_directeur") return true;
+    if (userRole === "directeur") return campus === userCampus;
+    return false; // rre ne peut pas éditer les données campus
+  };
+
+  const canViewAllCampus = userRole === "super_directeur" || userRole === "directeur";
+
+  return { isAdmin, userRole, loading, canEditCampus, canViewAllCampus };
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+export type UserRole = "rre" | "directeur" | "super_directeur";
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  rre:              "RRE",
+  directeur:        "Directeur",
+  super_directeur:  "Super Directeur",
+};
+
+export const ROLE_COLORS: Record<UserRole, string> = {
+  rre:              "#3B82F6",
+  directeur:        "#E8722A",
+  super_directeur:  "#7C3AED",
+};
 
 export interface AdminUser {
   id: string;
@@ -35,6 +81,7 @@ export interface AdminUser {
     stripe_sub: string | null;
     cancel_at: string | null;
   } | null;
+  role?: UserRole;
   // Détails Stripe chargés en arrière-plan
   subDetails?: {
     interval: "month" | "year";
@@ -82,7 +129,13 @@ export function useAdminDashboard(isAdmin: boolean) {
         });
       });
 
-      // 3. Construire la liste
+      // 3. Charger les rôles
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+      const rolesMap = new Map(rolesData?.map(r => [r.user_id, r.role as UserRole]) ?? []);
+
+      // 4. Construire la liste
       const result: AdminUser[] = [];
       licenceMap.forEach((lic, userId) => {
         const info = userMap.get(userId);
@@ -94,6 +147,7 @@ export function useAdminDashboard(isAdmin: boolean) {
           school: info?.school || "",
           created_at: info?.created_at || "",
           licence: { ...lic, cancel_at: lic.cancel_at ?? null },
+          role: rolesMap.get(userId) ?? "rre",
         });
       });
 
@@ -145,6 +199,7 @@ export function useAdminDashboard(isAdmin: boolean) {
     first_name: string;
     last_name: string;
     school: string;
+    role: UserRole;
     licence_type: "trial" | "lifetime" | "admin";
   }) => {
     try {
@@ -153,7 +208,7 @@ export function useAdminDashboard(isAdmin: boolean) {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(params),
+          body: JSON.stringify({ ...params, role: params.role ?? "rre" }),
         }
       );
       const data = await res.json();
@@ -203,10 +258,19 @@ export function useAdminDashboard(isAdmin: boolean) {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  const setUserRoleAction = useCallback(async (userId: string, role: UserRole) => {
+    const { error } = await supabase.from("user_roles").upsert({
+      user_id: userId, role, updated_at: new Date().toISOString(),
+    });
+    if (!error) await fetchUsers();
+    return !error;
+  }, [fetchUsers]);
+
   return {
     users, loading, error,
     fetchUsers,
     setLifetime, revokeLicence, extendTrial,
     resetUserPassword, deleteAccount, createUser,
+    setUserRoleAction,
   };
 }

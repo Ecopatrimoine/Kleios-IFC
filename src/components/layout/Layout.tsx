@@ -43,7 +43,6 @@ interface LayoutProps {
 
   // Contenu principal
   children: React.ReactNode;
-  onImportContrats?: () => void;
 }
 
 export function Layout({
@@ -66,7 +65,6 @@ export function Layout({
   licence,
   userId,
   children,
-  onImportContrats,
 }: LayoutProps) {
 
   // collapsed = true automatiquement quand une fiche est ouverte
@@ -115,7 +113,6 @@ export function Layout({
         logoSrc={logoSrc}
         colorNavy={colorNavy}
         colorGold={colorGold}
-        onImportContrats={onImportContrats}
       />
 
       {/* ── Zone principale ── */}

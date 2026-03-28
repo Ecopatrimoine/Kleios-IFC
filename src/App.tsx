@@ -18,10 +18,7 @@ import { AuthGate } from "./components/AuthGate";
 import { LicenceGate } from "./components/LicenceGate";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { Dashboard } from "./components/Dashboard";
 import { useGoogleCalendar } from "./hooks/useGoogleCalendar";
-import { ImportContrats } from "./components/ImportContrats";
-import { TabMarketing } from "./components/TabMarketing";
 import { MapView } from "./components/MapView";
 import { ProspectionView } from "./components/ProspectionView";
 import { SuiviTuteurs } from "./components/SuiviTuteurs";
@@ -29,6 +26,10 @@ import { PipelinePlacement } from "./components/PipelinePlacement";
 import { ReferentielsAdmin } from "./components/ReferentielsAdmin";
 import { useReferentiels } from "./hooks/useReferentiels";
 import { SeedDemoIFC } from "./components/SeedDemoIFC";
+import { AgendaIFC } from "./components/AgendaIFC";
+import { DashboardRRE } from "./components/DashboardRRE";
+import { DashboardDirection } from "./components/DashboardDirection";
+import { CampagnesIFC } from "./components/CampagnesIFC";
 
 type ActiveView =
   | "dashboard"
@@ -40,7 +41,10 @@ type ActiveView =
   | "admin"
   | "parametres"
   | "referentiels"
-  | "prospection";
+  | "prospection"
+  | "agenda"
+  | "direction"
+  | "marketing";
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -106,7 +110,7 @@ export default function App() {
   const auth = useAuth();
   const userId = auth.user?.id ?? null;
   const { licence } = useLicense(userId);
-  const { isAdmin } = useAdmin(auth.user?.email);
+  const { isAdmin, userRole } = useAdmin(auth.user?.email);
   const {
     contacts,
     syncStatus,
@@ -118,7 +122,7 @@ export default function App() {
   } = useContacts(userId);
 
   // ── Navigation ──
-  const [activeNav, setActiveNav] = useState<ActiveView>("entreprises");
+  const [activeNav, setActiveNav] = useState<ActiveView>("dashboard");
   const [isFicheOpen, setIsFicheOpen] = useState(false);
   const [topbarTitle, setTopbarTitle] = useState("Entreprises");
 
@@ -127,7 +131,6 @@ export default function App() {
 
   // ── Modal création ──
   const [showNewContactModal, setShowNewContactModal] = useState(false);
-  const [showImport, setShowImport] = useState(false);
   const [pendingVisite, setPendingVisite] = useState<{ entrepriseId: string; entrepriseNom: string } | null>(null);
 
   // ── Recherche ──
@@ -146,7 +149,10 @@ export default function App() {
       const raw = localStorage.getItem(localKey);
       if (raw) {
         const saved = JSON.parse(raw);
-        setCabinet(prev => ({ ...DEFAULT_CABINET, ...prev, ...saved }));
+        // Migration : remplacer les anciennes couleurs CGP par les couleurs IFC
+        const migratedNavy = ['#0B3040','#1A2E44'].includes(saved.colorNavy) ? '#E8722A' : (saved.colorNavy ?? '#E8722A');
+        const migratedGold = saved.colorGold === '#C9A84C' ? '#FFD100' : (saved.colorGold ?? '#FFD100');
+        setCabinet(prev => ({ ...DEFAULT_CABINET, ...prev, ...saved, colorNavy: migratedNavy, colorGold: migratedGold }));
       }
       const logo = localStorage.getItem(`${BRAND.storagePrefix}logo_${userId}`);
       if (logo) setLogoSrc(logo);
@@ -161,9 +167,13 @@ export default function App() {
     ).then(({ data }) => {
         if (data?.settings) {
           const saved = data.settings as Partial<CabinetSettings>;
-          setCabinet(prev => ({ ...DEFAULT_CABINET, ...prev, ...saved }));
+          // Migration : remplacer les anciennes couleurs CGP par les couleurs IFC
+          const migratedNavy = ['#0B3040','#1A2E44'].includes(saved.colorNavy ?? '') ? '#E8722A' : (saved.colorNavy ?? '#E8722A');
+          const migratedGold = saved.colorGold === '#C9A84C' ? '#FFD100' : (saved.colorGold ?? '#FFD100');
+          const migrated = { ...saved, colorNavy: migratedNavy, colorGold: migratedGold };
+          setCabinet(prev => ({ ...DEFAULT_CABINET, ...prev, ...migrated }));
           const localKey = `${BRAND.storagePrefix}cabinet_${userId}`;
-          localStorage.setItem(localKey, JSON.stringify(saved));
+          localStorage.setItem(localKey, JSON.stringify(migrated));
         }
       })
       .catch(() => { /* hors-ligne */ });
@@ -191,21 +201,22 @@ export default function App() {
     setOpenContact(null);
     setSearchValue("");
     const titles: Record<string, string> = {
-      dashboard:   "Tableau de bord",
-      pipeline:    "Pipeline de placement",
-      suivi:       "Suivi tuteurs",
-      referentiels: "Campus & Formations",
+      // Pilotage
+      dashboard:    "Tableau de bord",
+      direction:    "Dashboard direction",
+      // Entreprises
+      entreprises:  "Entreprises",
       prospection:  "Prospection entreprises",
-      clients:     "Entreprises",
-      contrats:    "Contrats",
-      agenda:      "Agenda & RDV",
-      conformite:  "Conformité DDA / MIF2 / KYC",
-      ged:         "Gestion documentaire",
-      commissions: "Commissions & honoraires",
-      marketing:   "Marketing & Campagnes",
-      carte:       "Carte clients",
-      admin:       "Administration",
-      parametres:  "Paramètres cabinet",
+      carte:        "Carte des entreprises",
+      // Alternance
+      pipeline:     "Pipeline de placement",
+      suivi:        "Suivi tuteurs",
+      // Planification
+      agenda:       "Agenda",
+      // Administration
+      referentiels: "Campus & Formations",
+      parametres:   "Paramètres",
+      admin:        "Administration",
     };
     setTopbarTitle(titles[id] ?? id);
   }, []);
@@ -240,10 +251,6 @@ export default function App() {
     setPendingVisite({ entrepriseId, entrepriseNom });
     handleNavChange("suivi");
   }, [handleNavChange]);
-
-  const handleImportContrats = useCallback(() => {
-    setShowImport(true);
-  }, []);
 
   const handleAdmin = useCallback(() => {
     setActiveNav("admin");
@@ -320,12 +327,34 @@ export default function App() {
     switch (activeNav) {
       case "dashboard":
         return (
-          <Dashboard
+          <DashboardRRE
             contacts={contacts}
+            userId={userId ?? ""}
             colorNavy={cabinet.colorNavy}
             colorGold={cabinet.colorGold}
-            onOpenContact={handleOpenFiche}
+            campusRRE={cabinet.campus ?? ""}
+            userRole={userRole}
+            objectifVisitesMois={(cabinet as any).objectifVisitesMois ?? 6}
             onNavigate={handleNavChange}
+            onOpenContact={handleOpenFiche}
+          />
+        );
+      case "direction":
+        return (
+          <DashboardDirection
+            contacts={contacts}
+            userId={userId ?? ""}
+            colorNavy={cabinet.colorNavy}
+            colorGold={cabinet.colorGold}
+            campusList={campusList}
+            campusRRE={cabinet.campus ?? ""}
+            isAdmin={isAdmin}
+            userRole={userRole}
+            onNavigate={handleNavChange}
+            objectifVisitesMois={(cabinet as any).objectifVisitesMois ?? 6}
+            objectifTauxPlacement={(cabinet as any).objectifTauxPlacement ?? 80}
+            objectifPartenaires={(cabinet as any).objectifPartenaires ?? 50}
+            objectifProspects={(cabinet as any).objectifProspects ?? 10}
           />
         );
       case "entreprises":
@@ -364,6 +393,7 @@ export default function App() {
             defaultEntrepriseId={pendingVisite?.entrepriseId}
             defaultEntrepriseNom={pendingVisite?.entrepriseNom}
             onPendingVisiteHandled={() => setPendingVisite(null)}
+            objectifVisitesMois={(cabinet as any).objectifVisitesMois ?? 6}
           />
         );
       case "referentiels":
@@ -396,12 +426,11 @@ export default function App() {
         );
       case "marketing":
         return (
-          <TabMarketing
-            cabinet={cabinet}
+          <CampagnesIFC
             contacts={contacts}
-              userId={userId ?? ""}
             colorNavy={cabinet.colorNavy}
             colorGold={cabinet.colorGold}
+            campusList={campusList}
           />
         );
       case "parametres":
@@ -428,6 +457,20 @@ export default function App() {
             onClose={() => handleNavChange("entreprises")}
           />
         );
+      case "agenda":
+        return (
+          <AgendaIFC
+            contacts={contacts}
+            userId={userId ?? ""}
+            colorNavy={cabinet.colorNavy}
+            colorGold={cabinet.colorGold}
+            userEmail={auth.user?.email ?? ""}
+            onOpenContact={handleOpenFiche}
+            onOpenEchanges={(record) => {
+              handleOpenFiche(record);
+            }}
+          />
+        );
       default:
         return <Placeholder title="Module à venir" />;
     }
@@ -449,7 +492,6 @@ export default function App() {
         isAdmin={isAdmin}
         onAdmin={handleAdmin}
         onSignOut={handleSignOut}
-        onImportContrats={handleImportContrats}
         logoSrc={logoSrc}
         colorNavy={cabinet.colorNavy}
         colorGold={cabinet.colorGold}
@@ -459,15 +501,6 @@ export default function App() {
         {renderView()}
       </Layout>
 
-      {showImport && (
-        <ImportContrats
-          contacts={contacts}
-          onUpdateContact={saveContact}
-          colorNavy={cabinet.colorNavy}
-          colorGold={cabinet.colorGold}
-          onClose={() => setShowImport(false)}
-        />
-      )}
       <SeedDemoIFC
         userId={userId ?? ""}
         contacts={contacts}

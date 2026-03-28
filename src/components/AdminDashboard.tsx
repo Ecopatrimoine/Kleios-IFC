@@ -1,6 +1,7 @@
 // src/components/AdminDashboard.tsx — Kleios IFC
 import { useState, useRef, useEffect } from "react";
-import { useAdminDashboard } from "../hooks/useAdmin";
+import { useAdminDashboard, ROLE_LABELS, ROLE_COLORS } from "../hooks/useAdmin";
+import type { UserRole } from "../hooks/useAdmin";
 import type { AdminUser } from "../hooks/useAdmin";
 
 interface AdminDashboardProps {
@@ -105,7 +106,7 @@ function ActionsMenu({ user, onLifetime, onActivate, onRevoke, onExtend, onReset
 }
 
 function CreateModal({ onCreate, onClose }: { onCreate: (d: any) => Promise<void>; onClose: () => void }) {
-  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", school: "", licence_type: "lifetime" });
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", school: "", role: "rre" as UserRole, licence_type: "lifetime" });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const upd = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -139,6 +140,19 @@ function CreateModal({ onCreate, onClose }: { onCreate: (d: any) => Promise<void
             {IFC_SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={lbl}>RÔLE</label>
+          <select value={form.role} onChange={e => upd("role", e.target.value)} style={{ ...inp, appearance: "none", cursor: "pointer" }}>
+            <option value="rre">RRE — Responsable Relations Entreprises</option>
+            <option value="directeur">Directeur — Vue tous campus, agit sur son campus</option>
+            <option value="super_directeur">Super Directeur — Accès complet tous campus</option>
+          </select>
+          <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>
+            {form.role === "rre" && "Voit tous les campus en lecture · agit uniquement pour lui-même"}
+            {form.role === "directeur" && "Consulte tous les campus · modifie uniquement son campus"}
+            {form.role === "super_directeur" && "Accès illimité sur tous les centres IFC"}
+          </div>
+        </div>
         <div style={{ marginBottom: 22 }}>
           <label style={lbl}>LICENCE</label>
           <select value={form.licence_type} onChange={e => upd("licence_type", e.target.value)} style={{ ...inp, appearance: "none", cursor: "pointer" }}>
@@ -160,7 +174,7 @@ function CreateModal({ onCreate, onClose }: { onCreate: (d: any) => Promise<void
 }
 
 export function AdminDashboard({ colorNavy: _cn, colorGold: _cg, onClose }: AdminDashboardProps) {
-  const { users, loading, error, fetchUsers, setLifetime, revokeLicence, extendTrial, resetUserPassword, deleteAccount, createUser } = useAdminDashboard(true);
+  const { users, loading, error, fetchUsers, setLifetime, revokeLicence, extendTrial, resetUserPassword, deleteAccount, createUser, setUserRoleAction: changeRole } = useAdminDashboard(true);
   const [toast, setToast]           = useState<{ text: string; ok: boolean } | null>(null);
   const [search, setSearch]         = useState("");
   const [filterSchool, setFilterSchool] = useState("all");
@@ -180,6 +194,7 @@ export function AdminDashboard({ colorNavy: _cn, colorGold: _cg, onClose }: Admi
   const handleRevoke  = async (u: AdminUser) => { const ok = await revokeLicence(u.id); notify(ok ? `✓ Révoqué` : "Erreur", ok); };
   const handleExtend  = async (u: AdminUser) => { const ok = await extendTrial(u.id, 15); notify(ok ? `✓ +15j` : "Erreur", ok); };
   const handleReset   = async (u: AdminUser) => { const ok = await resetUserPassword(u.email); notify(ok ? `✓ Email envoyé à ${u.email}` : "Erreur", ok); };
+  const handleChangeRole = async (userId: string, role: string) => { const ok = await changeRole(userId, role as any); notify(ok ? "✓ Rôle mis à jour" : "Erreur", ok); };
   const handleDelete  = async (u: AdminUser) => { const r = await deleteAccount(u.id); setConfirmDelete(null); notify(r.message, r.success); };
   const handleCreate  = async (data: any)    => { const r = await createUser(data); notify(r.message, r.success); if (r.success) setShowCreate(false); };
 
@@ -271,6 +286,17 @@ export function AdminDashboard({ colorNavy: _cn, colorGold: _cg, onClose }: Admi
                   <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1 }}>{u.email}</div>
                 </div>
                 <div style={{ minWidth: 160 }}>
+                  {u.role && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 10,
+                      background: `${ROLE_COLORS[u.role as UserRole] ?? "#9CA3AF"}15`,
+                      color: ROLE_COLORS[u.role as UserRole] ?? "#9CA3AF",
+                      border: `1px solid ${ROLE_COLORS[u.role as UserRole] ?? "#9CA3AF"}30`,
+                      marginRight: 4,
+                    }}>
+                      {ROLE_LABELS[u.role as UserRole] ?? u.role}
+                    </span>
+                  )}
                   {u.school ? (
                     <span style={{ fontSize: 11, fontWeight: 500, color: ORANGE, background: `${ORANGE}12`, border: `1px solid ${ORANGE}22`, padding: "2px 8px", borderRadius: 10 }}>
                       {u.school.replace("IFC ", "")}
@@ -284,6 +310,16 @@ export function AdminDashboard({ colorNavy: _cn, colorGold: _cg, onClose }: Admi
                   )}
                 </div>
                 <div style={{ minWidth: 90, textAlign: "right", fontSize: 11, color: "#9CA3AF" }}>{formatDate(u.created_at)}</div>
+                <select
+                  value={u.role ?? "rre"}
+                  onChange={e => handleChangeRole(u.id, e.target.value)}
+                  style={{ fontSize: 10, padding: "3px 7px", borderRadius: 6, border: "1px solid #E2E5EC", background: "#F9FAFB", color: "#374151", cursor: "pointer", fontFamily: "inherit", marginRight: 8 }}
+                  title="Changer le rôle"
+                >
+                  <option value="rre">RRE</option>
+                  <option value="directeur">Directeur</option>
+                  <option value="super_directeur">Super Directeur</option>
+                </select>
                 <ActionsMenu user={u} onLifetime={() => handleLifetime(u)} onActivate={() => handleActivate(u)} onRevoke={() => handleRevoke(u)} onExtend={() => handleExtend(u)} onReset={() => handleReset(u)} onDelete={() => setConfirmDelete(u)} onContact={() => window.location.href = `mailto:${u.email}`} />
               </div>
             ))}

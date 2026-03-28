@@ -17,6 +17,7 @@ interface SuiviTuteursProps {
   defaultEntrepriseId?: string;
   defaultEntrepriseNom?: string;
   onPendingVisiteHandled?: () => void;
+  objectifVisitesMois?: number;   // depuis cabinet.objectifVisitesMois
 }
 
 export type VisiteStatut = "planifiee" | "realisee" | "annulee" | "a_planifier";
@@ -269,15 +270,15 @@ function VisiteForm({ visite, contacts, pipeline, defaultStatut, defaultEntrepri
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-function Dashboard({ visites, onGoToList, onNewVisite }: {
+function Dashboard({ visites, onGoToList, onNewVisite, objectifMois = 6 }: {
   visites: VisiteTuteur[];
   onGoToList: (filter?: string) => void;
   onNewVisite: () => void;
+  objectifMois?: number;
 }) {
   const now = new Date();
   const moisDebut = new Date(now.getFullYear(), now.getMonth(), 1);
   const moisFin   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const objectifMois = 6; // objectif mensuel configurable
 
   // Stats globales
   const enRetard   = visites.filter(v => v.statut !== "realisee" && v.statut !== "annulee" && v.dateProchaine && joursRestants(v.dateProchaine) < 0);
@@ -573,7 +574,7 @@ function Liste({ visites, contacts: _c, pipeline: _p, onBack, onEdit, onDelete, 
 }
 
 // ── Composant principal ────────────────────────────────────────────────────────
-export function SuiviTuteurs({ contacts, userId, colorNavy: _cn, colorGold: _cg, campusRRE, defaultEntrepriseId, defaultEntrepriseNom, onPendingVisiteHandled }: SuiviTuteursProps) {
+export function SuiviTuteurs({ contacts, userId, colorNavy: _cn, colorGold: _cg, campusRRE, defaultEntrepriseId, defaultEntrepriseNom, onPendingVisiteHandled, objectifVisitesMois = 6 }: SuiviTuteursProps) {
   const [visites, setVisites] = useState<VisiteTuteur[]>(() => loadVisites(userId));
   const pipeline = useMemo(() => loadPipeline(userId), [userId]);
 
@@ -631,6 +632,7 @@ export function SuiviTuteurs({ contacts, userId, colorNavy: _cn, colorGold: _cg,
           visites={visites}
           onGoToList={handleGoToList}
           onNewVisite={() => handleNewVisite()}
+          objectifMois={objectifVisitesMois}
         />
       ) : (
         <Liste

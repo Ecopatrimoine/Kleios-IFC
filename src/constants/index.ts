@@ -19,19 +19,20 @@ export const BRAND = {
 // ------------------------------------------------------------
 
 export const DEFAULT_COLORS = {
-  navy:          '#0B3040',
-  navyLight:     '#144260',
-  gold:          '#C9A84C',
-  goldLight:     '#E8D5A3',
-  slate:         '#5B82A6',
-  slateLight:    '#D6E4F0',
-  bg:            '#EDE8DF',
+  // ── Palette IFC ──
+  navy:          '#E8722A',   // Orange IFC — sidebar, headers, boutons primaires
+  navyLight:     '#F08C4B',   // Orange clair — dégradés sidebar
+  gold:          '#FFD100',   // Jaune IFC — accents, nav actif, badges
+  goldLight:     '#FFF3A3',   // Jaune pâle — fonds dorés
+  slate:         '#5B82A6',   // Slate — labels, tabs
+  slateLight:    '#D6E4F0',   // Slate très clair — fonds sections
+  bg:            '#DADDE1',   // Gris-bleu IFC — fond application
   white:         '#FFFFFF',
-  textPrimary:   '#0B3040',
-  textSecondary: '#5E7A88',
-  textMuted:     '#8FAAB6',
-  border:        'rgba(11,48,64,0.10)',
-  borderStrong:  'rgba(11,48,64,0.17)',
+  textPrimary:   '#2B2B2B',   // Anthracite — texte principal (couleur du texte logo IFC)
+  textSecondary: '#6B6B6B',
+  textMuted:     '#9CA3AF',
+  border:        'rgba(43,43,43,0.10)',
+  borderStrong:  'rgba(43,43,43,0.17)',
   success:       '#2E8B6E',
   warning:       '#D97706',
   danger:        '#DC2626',
@@ -53,9 +54,9 @@ export const DEFAULT_CABINET = {
   phone: '',
   email: '',
   website: '',
-  colorNavy: '#0B3040',
-  colorGold: '#C9A84C',
-  colorBg: '#EDE8DF',
+  colorNavy: '#E8722A',   // Orange IFC
+  colorGold: '#FFD100',   // Jaune IFC
+  colorBg: '#F5F4F2',    // Blanc cassé
   signatureProvider: 'none' as 'none' | 'yousign' | 'docusign' | 'hellosign',
   signatureApiKey: '',
   rdvProvider: 'none' as 'none' | 'cal' | 'calendly' | 'custom',
@@ -67,6 +68,11 @@ export const DEFAULT_CABINET = {
   googlePlacesApiKey: '',   // clé Google Places API — saisie par le client dans Paramètres
   campus: '',               // campus IFC du RRE
   isAdmin: false,           // accès multi-campus
+  // Objectifs direction
+  objectifVisitesMois:    6,   // visites tuteurs / mois
+  objectifTauxPlacement:  80,  // taux placement cible (%)
+  objectifPartenaires:    50,  // nb entreprises partenaires cible
+  objectifProspects:      10,  // nb prospects à contacter / mois
   commissionRates: [] as Array<{ insurer: string; entree: string; gestion: string; arbitrage: string }>,
   calEventTypes: [] as Array<{
     id: string;
