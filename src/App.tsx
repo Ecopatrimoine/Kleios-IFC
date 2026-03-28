@@ -156,6 +156,12 @@ export default function App() {
       }
       const logo = localStorage.getItem(`${BRAND.storagePrefix}logo_${userId}`);
       if (logo) setLogoSrc(logo);
+
+      // Clé Google Places stockée séparément pour éviter tout écrasement Supabase
+      const googleKey = localStorage.getItem(`${BRAND.storagePrefix}google_places_key_${userId}`);
+      if (googleKey) {
+        setCabinet(prev => ({ ...prev, googlePlacesApiKey: googleKey }));
+      }
     } catch { /* ignore */ }
 
     Promise.resolve(
@@ -171,7 +177,15 @@ export default function App() {
           const migratedNavy = ['#0B3040','#1A2E44'].includes(saved.colorNavy ?? '') ? '#E8722A' : (saved.colorNavy ?? '#E8722A');
           const migratedGold = ['#C9A84C','#E3AF64','#c9a84c','#e3af64'].includes(saved.colorGold?.toLowerCase?.() ?? '') || !saved.colorGold ? '#FFD100' : saved.colorGold;
           const migrated = { ...saved, colorNavy: migratedNavy, colorGold: migratedGold };
-          setCabinet(prev => ({ ...DEFAULT_CABINET, ...prev, ...migrated }));
+          // Récupérer la clé Google avant le merge pour ne pas la perdre
+          const googleKey = localStorage.getItem(`${BRAND.storagePrefix}google_places_key_${userId}`);
+          setCabinet(prev => ({
+            ...DEFAULT_CABINET,
+            ...prev,
+            ...migrated,
+            // La clé Google ne vient jamais de Supabase — toujours depuis localStorage dédié
+            googlePlacesApiKey: googleKey || prev.googlePlacesApiKey || "",
+          }));
           const localKey = `${BRAND.storagePrefix}cabinet_${userId}`;
           localStorage.setItem(localKey, JSON.stringify(migrated));
         }

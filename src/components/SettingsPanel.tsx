@@ -204,10 +204,22 @@ export function SettingsPanel({
     setSaving(true);
     try {
       const localKey = `${BRAND.storagePrefix}cabinet_${userId}`;
-      localStorage.setItem(localKey, JSON.stringify(cabinet));
+
+      // Sauvegarder la clé Google séparément en localStorage
+      // Elle ne part jamais en Supabase (donnée sensible, côté client uniquement)
+      const googleKey = cabinet.googlePlacesApiKey ?? "";
+      if (googleKey) {
+        localStorage.setItem(`${BRAND.storagePrefix}google_places_key_${userId}`, googleKey);
+      } else {
+        localStorage.removeItem(`${BRAND.storagePrefix}google_places_key_${userId}`);
+      }
+
+      // Sauvegarder le reste du cabinet (sans la clé Google) en Supabase
+      const { googlePlacesApiKey: _omit, ...cabinetWithoutKey } = cabinet as any;
+      localStorage.setItem(localKey, JSON.stringify(cabinet)); // localStorage garde tout
       const { error } = await supabase
         .from("cabinet_settings")
-        .upsert({ user_id: userId, settings: cabinet, updated_at: new Date().toISOString() });
+        .upsert({ user_id: userId, settings: cabinetWithoutKey, updated_at: new Date().toISOString() });
       if (error) throw error;
       setSaveMsg({ text: "Paramètres sauvegardés ✓", ok: true });
     } catch (e: any) {
