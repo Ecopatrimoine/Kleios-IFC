@@ -10,8 +10,33 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { BRAND } from "../constants";
-import type { BusySlot } from "./useCalSync";
-import { getWeekKey, getMondayOfWeek } from "./useCalSync";
+// ── Types et helpers repris de useCalSync (supprimé) ─────────────────────────
+
+export interface BusySlot {
+  start:   string;
+  end:     string;
+  source:  string;
+  title?:  string;
+}
+
+function getWeekKey(date: Date): string {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  const weekNum = 1 + Math.round(
+    ((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7
+  );
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+}
+
+function getMondayOfWeek(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
 // ── Config ────────────────────────────────────────────────────────────────────
 

@@ -150,8 +150,8 @@ export default function App() {
       if (raw) {
         const saved = JSON.parse(raw);
         // Migration : remplacer les anciennes couleurs CGP par les couleurs IFC
-        const migratedNavy = ['#0B3040','#1A2E44'].includes(saved.colorNavy) ? '#E8722A' : (saved.colorNavy ?? '#E8722A');
-        const migratedGold = saved.colorGold === '#C9A84C' ? '#FFD100' : (saved.colorGold ?? '#FFD100');
+        const migratedNavy = ['#0B3040','#1A2E44','#101B3B','#0d1b2e','#0D1B2E','#1a2e44'].includes(saved.colorNavy?.toLowerCase?.() ?? '') || !saved.colorNavy ? '#E8722A' : saved.colorNavy;
+        const migratedGold = ['#C9A84C','#E3AF64','#c9a84c','#e3af64'].includes(saved.colorGold?.toLowerCase?.() ?? '') || !saved.colorGold ? '#FFD100' : saved.colorGold;
         setCabinet(prev => ({ ...DEFAULT_CABINET, ...prev, ...saved, colorNavy: migratedNavy, colorGold: migratedGold }));
       }
       const logo = localStorage.getItem(`${BRAND.storagePrefix}logo_${userId}`);
@@ -169,7 +169,7 @@ export default function App() {
           const saved = data.settings as Partial<CabinetSettings>;
           // Migration : remplacer les anciennes couleurs CGP par les couleurs IFC
           const migratedNavy = ['#0B3040','#1A2E44'].includes(saved.colorNavy ?? '') ? '#E8722A' : (saved.colorNavy ?? '#E8722A');
-          const migratedGold = saved.colorGold === '#C9A84C' ? '#FFD100' : (saved.colorGold ?? '#FFD100');
+          const migratedGold = ['#C9A84C','#E3AF64','#c9a84c','#e3af64'].includes(saved.colorGold?.toLowerCase?.() ?? '') || !saved.colorGold ? '#FFD100' : saved.colorGold;
           const migrated = { ...saved, colorNavy: migratedNavy, colorGold: migratedGold };
           setCabinet(prev => ({ ...DEFAULT_CABINET, ...prev, ...migrated }));
           const localKey = `${BRAND.storagePrefix}cabinet_${userId}`;
