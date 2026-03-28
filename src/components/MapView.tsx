@@ -13,10 +13,13 @@ interface MapViewProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  vip: "#C9A84C", client: "#2E8B6E", prospect: "#5B82A6", inactif: "#9CA3AF",
+  partenaire: "#059669", prospect: "#F26522", inactif: "#9CA3AF",
+  // compatibilité CGP
+  vip: "#C9A84C", client: "#2E8B6E",
 };
 const STATUS_LABELS: Record<string, string> = {
-  vip: "VIP", client: "Client", prospect: "Prospect", inactif: "Inactif",
+  partenaire: "Partenaire", prospect: "Prospect", inactif: "Inactif",
+  vip: "VIP", client: "Client",
 };
 
 function formatEncours(contacts: ContactRecord[], id: string): string {
@@ -34,6 +37,7 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
   const markersRef = useRef<any[]>([]);
   const [geocoding, setGeocoding] = useState(false);
   const [geocodedCount, setGeocodedCount] = useState(0);
+  const [mapReady, setMapReady] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedContact, setSelectedContact] = useState<ContactRecord | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -42,12 +46,11 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef<{ x: number; y: number; lat: number; lng: number } | null>(null);
   const leafletRef = useRef<any>(null);
-  const [leafletReady, setLeafletReady] = useState(false);
 
   const withCoords = contacts.filter(c => (c.payload as any)?.coords?.lat);
   const withAddress = contacts.filter(c => {
     if ((c.payload as any)?.coords?.lat) return false;
-    const p1 = c.payload?.contact?.person1;
+    const p1 = c.payload?.contact as any;
     return buildAddress({ address: p1?.address, postalCode: p1?.postalCode, city: p1?.city }).length > 0;
   });
 
@@ -71,7 +74,6 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
     import("leaflet").then(L => {
       import("leaflet/dist/leaflet.css");
       leafletRef.current = L;
-      setLeafletReady(true);
 
       const map = L.map(mapContainerRef.current!, { center: [46.8, 2.35], zoom: 5, zoomControl: true, attributionControl: true });
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -79,16 +81,17 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
       }).addTo(map);
 
       mapRef.current = map;
+      setMapReady(true);
     });
 
     return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
   }, []);
 
-  // Marqueurs — déclenché quand Leaflet est prêt
+  // Marqueurs
   useEffect(() => {
     const map = mapRef.current;
     const L = leafletRef.current;
-    if (!map || !L || !leafletReady) return;
+    if (!map || !L) return;
 
     const timer = setTimeout(() => {
       markersRef.current.forEach(m => m.remove());
@@ -102,7 +105,7 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
         if (!coords?.lat) return;
         const color = STATUS_COLORS[contact.status] ?? STATUS_COLORS.inactif;
         const isSelected = selectedIds.has(contact.id);
-        const size = isSelected ? 24 : 18;
+        const size = isSelected ? 32 : 26;
         const precision = (contact.payload as any)?.coords?.precision;
         const border = isSelected ? `3px solid #fff` : precision === "city" ? `2px dashed rgba(255,255,255,0.8)` : `2px solid #fff`;
         const opacity = precision === "city" ? "0.7" : "1";
@@ -118,13 +121,13 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
       });
     }, 100);
     return () => clearTimeout(timer);
-  }, [withCoords, filterStatus, selectedContacts, selectionMode, leafletReady]);
+  }, [withCoords, filterStatus, selectedContacts, selectionMode]);
 
   // Mode sélection cercle
   useEffect(() => {
     const map = mapRef.current;
     const L = leafletRef.current;
-    if (!map || !L || !leafletReady) return;
+    if (!map || !L) return;
 
     if (!selectionMode) {
       map.dragging.enable();
@@ -169,14 +172,22 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
       map.dragging.enable();
       map.getContainer().style.cursor = "";
     };
-  }, [selectionMode, colorNavy, leafletReady]);
+  }, [selectionMode, colorNavy]);
+
+  // Géocodage automatique quand la carte est prête
+  useEffect(() => {
+    if (mapReady && withAddress.length > 0 && !geocoding) {
+      handleGeocode();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady]);
 
   const handleGeocode = useCallback(async () => {
     setGeocoding(true);
     let count = 0;
     const { geocodeAddress, buildAddress: ba } = await import("../lib/geocode");
     for (const contact of withAddress) {
-      const p1 = contact.payload?.contact?.person1;
+      const p1 = contact.payload?.contact as any;
       const address = ba({ address: p1?.address, postalCode: p1?.postalCode, city: p1?.city });
       if (!address) continue;
       await new Promise(r => setTimeout(r, 1100));
@@ -209,8 +220,8 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
 
         {/* Filtres statut */}
         <div style={{ display: "flex", gap: 6 }}>
-          {["all", "vip", "client", "prospect", "inactif"].map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)} style={{ padding: "4px 12px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "inherit", border: filterStatus === s ? "none" : "1px solid rgba(11,48,64,0.12)", background: filterStatus === s ? (s === "all" ? colorNavy : STATUS_COLORS[s]) : "#fff", color: filterStatus === s ? (s === "vip" ? "#101B3B" : "#fff") : "#6B7280", fontWeight: filterStatus === s ? 600 : 400 }}>
+          {["all", "partenaire", "prospect", "inactif"].map(s => (
+            <button key={s} onClick={() => setFilterStatus(s)} style={{ padding: "4px 12px", borderRadius: 10, fontSize: 11, cursor: "pointer", fontFamily: "inherit", border: filterStatus === s ? "none" : "1px solid rgba(11,48,64,0.12)", background: filterStatus === s ? (s === "all" ? colorNavy : STATUS_COLORS[s]) : "#fff", color: filterStatus === s ? "#fff" : "#6B7280", fontWeight: filterStatus === s ? 600 : 400 }}>
               {s === "all" ? "Tous" : STATUS_LABELS[s]}
               {s !== "all" && ` (${contacts.filter(c => c.status === s && (c.payload as any)?.coords?.lat).length})`}
             </button>
@@ -251,10 +262,10 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
                   const col = STATUS_COLORS[c.status] ?? STATUS_COLORS.inactif;
                   return (
                     <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", background: col + "18", borderRadius: 8 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: col, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: c.status === "vip" ? "#101B3B" : "#fff", flexShrink: 0 }}>{c.displayName.slice(0,2).toUpperCase()}</div>
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: col, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: false ? "#101B3B" : "#fff", flexShrink: 0 }}>{c.displayName.slice(0,2).toUpperCase()}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 11, fontWeight: 500, color: "#0B3040", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.displayName}</div>
-                        <div style={{ fontSize: 10, color: "#8FAAB6" }}>{c.payload?.contact?.person1?.city ?? ""}</div>
+                        <div style={{ fontSize: 10, color: "#8FAAB6" }}>{c.payload?.contact?.city ?? ""}</div>
                       </div>
                     </div>
                   );
@@ -264,7 +275,7 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
                 {onOpenMarketing && <button onClick={() => onOpenMarketing(selectedContacts.map(c => c.id))} style={{ padding: "8px", borderRadius: 6, border: "none", background: colorNavy, color: "#fff", fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>✉ Campagne marketing →</button>}
                 <button onClick={() => {
                   const nl = "\n";
-                  const lines = selectedContacts.map(c => [c.displayName, c.payload?.contact?.person1?.city ?? "", c.payload?.contact?.person1?.email || "", STATUS_LABELS[c.status]].join(";")).join(nl);
+                  const lines = selectedContacts.map(c => [c.displayName, c.payload?.contact?.city ?? "", c.payload?.contact?.email || "", STATUS_LABELS[c.status]].join(";")).join(nl);
                   const blob = new Blob(["Nom;Ville;Email;Statut" + nl + lines], { type: "text/csv" });
                   const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "selection_clients.csv"; a.click(); URL.revokeObjectURL(url);
                 }} style={{ padding: "8px", borderRadius: 6, border: "1px solid rgba(11,48,64,0.12)", background: "#fff", color: "#374151", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>⬇ Exporter CSV</button>
@@ -279,14 +290,14 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
           ) : selectedContact ? (
             <div style={{ padding: 14, flex: 1, overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <div style={{ width: 42, height: 42, borderRadius: "50%", background: STATUS_COLORS[selectedContact.status] ?? "#9CA3AF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: selectedContact.status === "vip" ? "#101B3B" : "#fff" }}>{selectedContact.displayName.slice(0,2).toUpperCase()}</div>
+                <div style={{ width: 42, height: 42, borderRadius: "50%", background: STATUS_COLORS[selectedContact.status] ?? "#9CA3AF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: false ? "#101B3B" : "#fff" }}>{selectedContact.displayName.slice(0,2).toUpperCase()}</div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: "#0B3040" }}>{selectedContact.displayName}</div>
                   <span style={{ padding: "1px 8px", borderRadius: 8, fontSize: 10, fontWeight: 500, background: (STATUS_COLORS[selectedContact.status] ?? "#9CA3AF") + "20", color: STATUS_COLORS[selectedContact.status] ?? "#9CA3AF" }}>{STATUS_LABELS[selectedContact.status]}</span>
                 </div>
               </div>
               {(() => {
-                const p1 = selectedContact.payload?.contact?.person1;
+                const p1 = (selectedContact.payload?.contact as any);
                 const address = buildAddress({ address: p1?.address, postalCode: p1?.postalCode, city: p1?.city });
                 const actifs = (selectedContact.payload?.contracts ?? []).filter(c => c.status === "actif");
                 const encours = formatEncours([selectedContact], selectedContact.id);
@@ -313,10 +324,10 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
                   <div key={contact.id} onClick={() => flyTo(contact)} style={{ padding: "10px 14px", borderBottom: "1px solid rgba(11,48,64,0.05)", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
                     onMouseEnter={e => (e.currentTarget.style.background = "#F8F9FB")}
                     onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: contact.status === "vip" ? "#101B3B" : "#fff" }}>{contact.displayName.slice(0,2).toUpperCase()}</div>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: false ? "#101B3B" : "#fff" }}>{contact.displayName.slice(0,2).toUpperCase()}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 500, color: "#0B3040", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{contact.displayName}</div>
-                      <div style={{ fontSize: 10, color: "#8FAAB6" }}>{contact.payload?.contact?.person1?.city ?? ""}{encours && <span style={{ color: colorNavy, fontWeight: 500 }}> · {encours}</span>}</div>
+                      <div style={{ fontSize: 10, color: "#8FAAB6" }}>{contact.payload?.contact?.city ?? ""}{encours && <span style={{ color: colorNavy, fontWeight: 500 }}> · {encours}</span>}</div>
                     </div>
                     <div style={{ fontSize: 14, color: "#8FAAB6" }}>›</div>
                   </div>
@@ -331,7 +342,7 @@ export function MapView({ contacts, onSaveContact, onOpenContact, onOpenMarketin
       {/* Légende */}
       <div style={{ display: "flex", gap: 16, padding: "8px 14px", background: "rgba(255,255,255,0.92)", borderRadius: 8, border: "1px solid rgba(11,48,64,0.09)", alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ fontSize: 11, color: "#8FAAB6", fontWeight: 500 }}>LÉGENDE</span>
-        {Object.entries(STATUS_LABELS).map(([key, label]) => (
+        {Object.entries(STATUS_LABELS).filter(([key]) => ["partenaire","prospect","inactif"].includes(key)).map(([key, label]) => (
           <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <div style={{ width: 10, height: 10, borderRadius: "50%", background: STATUS_COLORS[key], border: "2px solid #fff", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
             <span style={{ fontSize: 11, color: "#5E7A88" }}>{label}</span>

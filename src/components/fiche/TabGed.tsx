@@ -23,15 +23,12 @@ export type DocCategory =
 
 interface GedDocument {
   id: string;           // path Supabase Storage
-  ref: string;          // référence unique ex: LM-PER-2026-03-001
   name: string;         // nom affiché
   fileName: string;     // nom fichier original
   category: DocCategory;
-  status: "brouillon" | "envoye" | "signe" | "archive";
   size: number;         // bytes
   mimeType: string;
   uploadedAt: string;   // ISO
-  expiresAt: string;    // ISO — alerte expiration (lettres mission, DER)
   visibleToClient: boolean;
   notes: string;
 }
@@ -69,56 +66,6 @@ const BUCKET = "documents";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const CAT_CODE: Record<DocCategory, string> = {
-  lettre_mission:      "LM",
-  rapport_patrimonial: "RPP",
-  contrat:             "CT",
-  der:                 "DER",
-  kyc:                 "KYC",
-  autre:               "DOC",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  brouillon: "Brouillon",
-  envoye:    "Envoyé",
-  signe:     "Signé",
-  archive:   "Archivé",
-};
-
-const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  brouillon: { bg: "#F3F4F6", color: "#6B7280" },
-  envoye:    { bg: "#EFF6FF", color: "#1D4ED8" },
-  signe:     { bg: "#ECFDF5", color: "#065F46" },
-  archive:   { bg: "#FEF3C7", color: "#92400E" },
-};
-
-// Génère la référence unique : LM-PER-2026-03-001
-function generateRef(category: DocCategory, displayName: string, existingDocs: GedDocument[]): string {
-  const code = CAT_CODE[category];
-  const initials = displayName.trim().split(/\s+/).map(w => w[0]?.toUpperCase() ?? "").join("").slice(0, 3).padEnd(3, "X");
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const prefix = `${code}-${initials}-${yyyy}-${mm}-`;
-  const existing = existingDocs.filter(d => d.ref?.startsWith(prefix));
-  const seq = String(existing.length + 1).padStart(3, "0");
-  return `${prefix}${seq}`;
-}
-
-// Calcule la date d'expiration selon la catégorie (mois)
-function getExpiryDate(category: DocCategory): string {
-  const monthsMap: Partial<Record<DocCategory, number>> = {
-    lettre_mission: 24,
-    der:            36,
-    kyc:            60,
-  };
-  const months = monthsMap[category];
-  if (!months) return "";
-  const d = new Date();
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
-}
-
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`;
@@ -150,9 +97,7 @@ export function TabGed({ record, onSave, colorNavy, colorGold: _cg }: TabGedProp
   const [newDocCategory, setNewDocCategory] = useState<DocCategory>("autre");
   const [newDocName, setNewDocName] = useState("");
   const [newDocNotes, setNewDocNotes] = useState("");
-  const [newDocStatus, setNewDocStatus] = useState<"brouillon" | "envoye" | "signe" | "archive">("brouillon");
   const [newDocVisible, setNewDocVisible] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -200,18 +145,14 @@ export function TabGed({ record, onSave, colorNavy, colorGold: _cg }: TabGedProp
 
       setUploadProgress(80);
 
-      const ref = generateRef(newDocCategory, record.displayName, docs);
       const doc: GedDocument = {
         id: path,
-        ref,
         name: newDocName.trim() || selectedFile.name,
         fileName: selectedFile.name,
         category: newDocCategory,
-        status: newDocStatus,
         size: selectedFile.size,
         mimeType: selectedFile.type,
         uploadedAt: new Date().toISOString(),
-        expiresAt: getExpiryDate(newDocCategory),
         visibleToClient: newDocVisible,
         notes: newDocNotes,
       };
@@ -225,7 +166,6 @@ export function TabGed({ record, onSave, colorNavy, colorGold: _cg }: TabGedProp
         setSelectedFile(null);
         setNewDocName("");
         setNewDocNotes("");
-        setNewDocStatus("brouillon");
         setNewDocCategory("autre");
         setNewDocVisible(false);
         setUploading(false);
@@ -237,46 +177,6 @@ export function TabGed({ record, onSave, colorNavy, colorGold: _cg }: TabGedProp
       setUploading(false);
       setUploadProgress(0);
     }
-  };
-
-  // ── Envoi email ──────────────────────────────────────────────────────────
-  const handleSendEmail = async (doc: GedDocument) => {
-    const clientEmail = record.payload?.contact?.person1?.email || record.payload?.contact?.person2?.email;
-    if (!clientEmail) {
-      alert("Aucun email trouvé pour ce client. Renseignez l'email dans la fiche civile.");
-      return;
-    }
-    if (!confirm(`Envoyer "${doc.name}" à ${clientEmail} ?`)) return;
-    setSendingEmail(doc.id);
-    try {
-      const { data: urlData, error: urlError } = await supabase.storage
-        .from("documents").createSignedUrl(doc.id, 7 * 24 * 3600); // 7 jours
-      if (urlError) throw urlError;
-      const { error } = await supabase.functions.invoke("send-email", {
-        body: {
-          type: "document_shared",
-          to: clientEmail,
-          clientName: record.displayName,
-          documentName: doc.name,
-          documentRef: doc.ref,
-          downloadUrl: urlData.signedUrl,
-        },
-      });
-      if (error) throw error;
-      // Mettre à jour le statut
-      const updatedDocs = docs.map(d => d.id === doc.id ? { ...d, status: "envoye" as const } : d);
-      saveDocs(updatedDocs);
-      alert(`Document envoyé à ${clientEmail}`);
-    } catch (err: any) {
-      alert("Erreur d'envoi : " + err.message);
-    } finally {
-      setSendingEmail(null);
-    }
-  };
-
-  // ── Changement de statut ──────────────────────────────────────────────────
-  const handleStatusChange = (docId: string, status: GedDocument["status"]) => {
-    saveDocs(docs.map(d => d.id === docId ? { ...d, status } : d));
   };
 
   // ── Téléchargement ────────────────────────────────────────────────────────
@@ -417,15 +317,6 @@ export function TabGed({ record, onSave, colorNavy, colorGold: _cg }: TabGedProp
                 ))}
               </select>
             </div>
-            {/* Statut */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <label style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Statut</label>
-              <select value={newDocStatus} onChange={e => setNewDocStatus(e.target.value as any)} style={inp}>
-                {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-            </div>
             {/* Nom */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <label style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>Nom du document</label>
@@ -522,44 +413,46 @@ export function TabGed({ record, onSave, colorNavy, colorGold: _cg }: TabGedProp
 
                 {/* Infos */}
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#0D1B2E" }}>{doc.name}</div>
-                    {doc.ref && (
-                      <span style={{ fontFamily: "monospace", fontSize: 10, fontWeight: 600, padding: "1px 7px", borderRadius: 6, background: "#F0F2F6", color: colorNavy }}>{doc.ref}</span>
-                    )}
-                    <span style={{ padding: "1px 7px", borderRadius: 8, fontSize: 9, fontWeight: 500, background: catStyle.bg, color: catStyle.color }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "#0D1B2E" }}>{doc.name}</div>
+                    <span style={{
+                      padding: "1px 7px", borderRadius: 8, fontSize: 9, fontWeight: 500,
+                      background: catStyle.bg, color: catStyle.color,
+                    }}>
                       {CATEGORY_ICONS[doc.category]} {CATEGORY_LABELS[doc.category]}
                     </span>
-                    {doc.status && (
-                      <span style={{ padding: "1px 7px", borderRadius: 8, fontSize: 9, fontWeight: 500, background: STATUS_COLORS[doc.status]?.bg ?? "#F3F4F6", color: STATUS_COLORS[doc.status]?.color ?? "#6B7280" }}>
-                        {STATUS_LABELS[doc.status]}
-                      </span>
-                    )}
                     {doc.visibleToClient && (
-                      <span style={{ padding: "1px 7px", borderRadius: 8, fontSize: 9, background: "#EFF6FF", color: "#1D4ED8" }}>👤 Espace client</span>
+                      <span style={{ padding: "1px 7px", borderRadius: 8, fontSize: 9, background: "#EFF6FF", color: "#1D4ED8" }}>
+                        👤 Espace client
+                      </span>
                     )}
                   </div>
                   <div style={{ fontSize: 11, color: "#9CA3AF" }}>
                     {doc.fileName} · {formatSize(doc.size)} · {formatDate(doc.uploadedAt)}
-                    {doc.expiresAt && (
-                      <span style={{ marginLeft: 6, fontSize: 10, color: new Date(doc.expiresAt) < new Date() ? "#EF4444" : (new Date(doc.expiresAt).getTime() - Date.now()) < 6*30*24*3600*1000 ? "#F59E0B" : "#9CA3AF" }}>
-                        · exp. {formatDate(doc.expiresAt)}
-                      </span>
-                    )}
-                    {doc.notes && <span> · {doc.notes}</span>}
+                    {doc.notes && ` · ${doc.notes}`}
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <select value={doc.status ?? "brouillon"} onChange={e => handleStatusChange(doc.id, e.target.value as GedDocument["status"])} style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #E2E5EC", background: "#fff", fontSize: 11, cursor: "pointer", fontFamily: "inherit", color: STATUS_COLORS[doc.status ?? "brouillon"]?.color ?? "#6B7280" }}>
-                    {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                  <button onClick={() => handleDownload(doc)} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #E2E5EC", background: "#fff", fontSize: 11, color: colorNavy, cursor: "pointer", fontFamily: "inherit" }} title="Télécharger">⬇</button>
-                  <button onClick={() => handleSendEmail(doc)} disabled={sendingEmail === doc.id} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #E2E5EC", background: "#fff", fontSize: 11, color: "#6B7280", cursor: "pointer", fontFamily: "inherit" }} title="Envoyer par email">
-                    {sendingEmail === doc.id ? "..." : "✉"}
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={() => handleDownload(doc)}
+                    title="Télécharger"
+                    style={{
+                      padding: "5px 10px", borderRadius: 6, border: "1px solid #E2E5EC",
+                      background: "#fff", fontSize: 12, color: colorNavy, cursor: "pointer", fontFamily: "inherit",
+                    }}>
+                    ⬇ Télécharger
                   </button>
-                  <button onClick={() => handleDelete(doc)} style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #FECACA", background: "#fff", fontSize: 11, color: "#EF4444", cursor: "pointer", fontFamily: "inherit" }}>🗑</button>
+                  <button
+                    onClick={() => handleDelete(doc)}
+                    title="Supprimer"
+                    style={{
+                      padding: "5px 10px", borderRadius: 6, border: "1px solid #FECACA",
+                      background: "#fff", fontSize: 12, color: "#EF4444", cursor: "pointer", fontFamily: "inherit",
+                    }}>
+                    🗑
+                  </button>
                 </div>
               </div>
             );

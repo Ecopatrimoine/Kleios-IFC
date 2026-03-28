@@ -23,22 +23,22 @@ const BellIcon = () => (
   </svg>
 );
 
-export function Topbar({ title, onNewContact, searchValue = "", onSearchChange, showSearch = true, colorNavy, colorGold }: TopbarProps) {
+export function Topbar({ title, onNewContact, searchValue = "", onSearchChange, showSearch = true, colorNavy: _cn, colorGold: _cg }: TopbarProps) {
   return (
     <header style={{
-      background: "rgba(237,232,223,0.97)",
+      background: "rgba(255,255,255,0.97)",
       padding: "0 22px",
       height: 52,
       display: "flex",
       alignItems: "center",
       gap: 14,
-      borderBottom: "1px solid rgba(11,48,64,0.10)",
+      borderBottom: "1px solid rgba(26,46,68,0.10)", boxShadow: "0 1px 6px rgba(26,46,68,0.06)",
       flexShrink: 0,
     }}>
       {/* Dot + titre */}
       <div style={{ display: "flex", alignItems: "center", gap: 9, flex: 1 }}>
-        <div style={{ width: 7, height: 7, borderRadius: "50%", background: colorGold, flexShrink: 0 }} />
-        <h1 style={{ fontSize: 15, fontWeight: 600, color: "#0B3040", margin: 0 }}>{title}</h1>
+        <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#F26522", flexShrink: 0 }} />
+        <h1 style={{ fontSize: 15, fontWeight: 600, color: "#1A2E44", margin: 0 }}>{title}</h1>
       </div>
 
       {/* Recherche */}
@@ -46,7 +46,7 @@ export function Topbar({ title, onNewContact, searchValue = "", onSearchChange, 
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           background: "rgba(255,255,255,0.75)",
-          border: "1px solid rgba(11,48,64,0.13)",
+          border: "1px solid rgba(26,46,68,0.12)",
           borderRadius: 7, padding: "5px 12px", width: 220,
           transition: "border-color 0.15s",
         }}
@@ -55,12 +55,12 @@ export function Topbar({ title, onNewContact, searchValue = "", onSearchChange, 
           <SearchIcon />
           <input
             type="text"
-            placeholder="Rechercher un client..."
+            placeholder="Rechercher une entreprise..."
             value={searchValue}
             onChange={e => onSearchChange?.(e.target.value)}
             style={{
               border: "none", background: "none", fontSize: 12.5,
-              color: "#0B3040", outline: "none", fontFamily: "inherit", width: "100%",
+              color: "#1A2E44", outline: "none", fontFamily: "inherit", width: "100%",
             }}
           />
         </div>
@@ -69,15 +69,15 @@ export function Topbar({ title, onNewContact, searchValue = "", onSearchChange, 
       {/* Cloche */}
       <div style={{
         width: 30, height: 30, borderRadius: 7,
-        border: "1px solid rgba(11,48,64,0.13)",
+        border: "1px solid rgba(26,46,68,0.12)",
         background: "rgba(255,255,255,0.75)",
         display: "flex", alignItems: "center", justifyContent: "center",
         cursor: "pointer", position: "relative",
       }}>
         <BellIcon />
         <div style={{
-          width: 7, height: 7, background: colorGold, borderRadius: "50%",
-          position: "absolute", top: 6, right: 6, border: "1.5px solid rgba(237,232,223,0.97)",
+          width: 7, height: 7, background: "#F26522", borderRadius: "50%",
+          position: "absolute", top: 6, right: 6, border: "1.5px solid #fff",
         }}/>
       </div>
 
@@ -85,11 +85,11 @@ export function Topbar({ title, onNewContact, searchValue = "", onSearchChange, 
       {onNewContact && (
         <button onClick={onNewContact} style={{
           display: "flex", alignItems: "center", gap: 6,
-          background: colorNavy, color: "#fff",
+          background: "#F26522", color: "#fff",
           border: "none", borderRadius: 7,
           padding: "7px 14px", fontSize: 12, fontWeight: 500,
           cursor: "pointer", fontFamily: "inherit",
-          boxShadow: "0 2px 8px rgba(11,48,64,0.18)",
+          boxShadow: "0 2px 8px rgba(242,101,34,0.28)",
         }}>
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
             <path d="M6 1v10M1 6h10" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/>

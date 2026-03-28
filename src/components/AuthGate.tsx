@@ -53,7 +53,7 @@ function Field({
         onBlur={() => setFocused(false)}
         style={{
           border: focused
-            ? "1.5px solid #C9A84C"
+            ? "1.5px solid #F26522"
             : "1.5px solid rgba(255,255,255,0.15)",
           borderRadius: 10,
           padding: "10px 14px",
@@ -71,7 +71,7 @@ function Field({
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
+export function AuthGate({ authHook, colorNavy, colorGold: _cg }: AuthGateProps) {
   const {
     authState,
     error,
@@ -87,6 +87,9 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
   const [email, setEmail]                   = useState("");
   const [password, setPassword]             = useState("");
   const [cabinetName, setCabinetName]       = useState("");
+  const [campusRRE, setCampusRRE]           = useState("");
+  const [prenomRRE, setPrenomRRE]           = useState("");
+  const [nomRRE, setNomRRE]               = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [newPassword, setNewPassword]       = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -112,11 +115,12 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
 
   const handleRegister = async () => {
     setLocalError("");
-    if (!cabinetName.trim()) { setLocalError("Veuillez saisir le nom de votre cabinet."); return; }
+    if (!cabinetName.trim()) { setLocalError("Veuillez saisir le nom de votre campus / établissement."); return; }
+    if (!campusRRE.trim()) { setLocalError("Veuillez sélectionner votre campus."); return; }
     if (password.length < 8) { setLocalError("Le mot de passe doit faire au moins 8 caractères."); return; }
     if (password !== confirmPassword) { setLocalError("Les mots de passe ne correspondent pas."); return; }
     setLoading(true);
-    const ok = await signUp(email, password, cabinetName);
+    const ok = await signUp(email, password, cabinetName, { campus: campusRRE, first_name: prenomRRE, last_name: nomRRE });
     setLoading(false);
     if (ok) {
       // Détecter Mac pour email de bienvenue adapté
@@ -188,16 +192,16 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
       {/* ── Formes géométriques animées ── */}
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}>
         <div style={{ position:"absolute", top:"-120px", left:"-100px", width:"480px", height:"480px",
-          borderRadius:"50%", background: colorGold, opacity:0.06,
+          borderRadius:"50%", background: "#F26522", opacity:0.06,
           animation:"float1 14s ease-in-out infinite" }}/>
         <div style={{ position:"absolute", top:"-20px", left:"32%", width:"240px", height:"110px",
-          borderRadius:"24px", background: colorGold, opacity:0.10, transform:"rotate(-14deg)",
+          borderRadius:"24px", background: "#F26522", opacity:0.10, transform:"rotate(-14deg)",
           animation:"float2 11s ease-in-out infinite" }}/>
         <div style={{ position:"absolute", top:"80px", right:"-60px", width:"300px", height:"300px",
           borderRadius:"32px", background:"rgba(255,255,255,0.04)", transform:"rotate(22deg)",
           animation:"float3 16s ease-in-out infinite" }}/>
         <div style={{ position:"absolute", bottom:"-80px", right:"40px", width:"380px", height:"380px",
-          borderRadius:"50%", background: colorGold, opacity:0.07,
+          borderRadius:"50%", background: "#F26522", opacity:0.07,
           animation:"float4 13s ease-in-out infinite" }}/>
         <div style={{ position:"absolute", bottom:"60px", left:"-50px", width:"300px", height:"140px",
           borderRadius:"20px", background:"rgba(255,255,255,0.03)", transform:"rotate(-10deg)",
@@ -215,7 +219,7 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
         @keyframes float5 { 0%,100%{transform:translateY(0) rotate(-10deg)} 50%{transform:translateY(18px) rotate(-10deg)} }
       `}</style>
 
-      {/* ── Logo KleiΩs ── */}
+      {/* ── Logo Kleios IFC ── */}
       <div style={{
         display: "flex",
         flexDirection: "column",
@@ -230,19 +234,19 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
           width: 64,
           height: 64,
           borderRadius: "50%",
-          border: `2px solid ${colorGold}`,
-          background: `${colorGold}18`,
+          border: `2px solid #F26522`,
+          background: `#F2652218`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontSize: 30,
-          color: colorGold,
+          color: "#F26522",
           fontFamily: "Georgia, serif",
-          boxShadow: `0 0 30px ${colorGold}30`,
+          boxShadow: `0 0 30px #F2652230`,
         }}>
           ϰ
         </div>
-        {/* Lettrage KleiΩs */}
+        {/* Lettrage Kleios IFC */}
         <div style={{
           fontSize: 26,
           fontWeight: 600,
@@ -250,7 +254,7 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
           fontFamily: "Georgia, serif",
           letterSpacing: "-0.3px",
         }}>
-          Klei<span style={{ color: colorGold }}>Ω</span>s
+          Kleios <span style={{ color: "#F26522" }}>IFC</span>
         </div>
         <div style={{
           fontSize: 10,
@@ -258,7 +262,7 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
           letterSpacing: "2px",
           textTransform: "uppercase",
         }}>
-          CRM Patrimonial
+          CRM Commercial
         </div>
       </div>
 
@@ -342,8 +346,38 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
             label="Nom du cabinet"
             value={cabinetName}
             onChange={setCabinetName}
-            placeholder="Ex : Dupont Patrimoine Conseil"
+            placeholder="Ex : Marie Dupont — RRE"
           />
+        )}
+
+
+        {/* Prénom & Nom RRE (inscription) */}
+        {mode === "register" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <Field label="Prénom" value={prenomRRE} onChange={setPrenomRRE} placeholder="Prénom" />
+            <Field label="Nom" value={nomRRE} onChange={setNomRRE} placeholder="Nom" />
+          </div>
+        )}
+
+        {/* Campus IFC (inscription) */}
+        {mode === "register" && (
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.65)", letterSpacing: 0.4, display: "block", marginBottom: 6 }}>CAMPUS / ÉTABLISSEMENT</label>
+            <select value={campusRRE} onChange={e => setCampusRRE(e.target.value)}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: campusRRE ? "#fff" : "rgba(255,255,255,0.45)", fontSize: 13, fontFamily: "inherit", outline: "none", appearance: "none" }}>
+              <option value="">— Sélectionnez votre campus —</option>
+              <option value="IFC Perpignan">IFC Perpignan</option>
+              <option value="IFC Montpellier">IFC Montpellier</option>
+              <option value="IFC Nîmes">IFC Nîmes</option>
+              <option value="IFC Avignon">IFC Avignon</option>
+              <option value="IFC Marseille">IFC Marseille</option>
+              <option value="IFC Alès">IFC Alès</option>
+              <option value="IFC Saint-Étienne">IFC Saint-Étienne</option>
+              <option value="IFC Valence">IFC Valence</option>
+              <option value="IFC Clermont-Ferrand">IFC Clermont-Ferrand</option>
+              <option value="Westford">Westford</option>
+            </select>
+          </div>
         )}
 
         {/* Email */}
@@ -417,7 +451,7 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
             border: "none",
             background: loading || (mode !== "reset" && !email)
               ? "rgba(255,255,255,0.15)"
-              : `linear-gradient(135deg, ${colorGold} 0%, #E8C060 100%)`,
+              : `linear-gradient(135deg, #F26522 0%, #E8C060 100%)`,
             color: loading || (mode !== "reset" && !email) ? "rgba(255,255,255,0.4)" : colorNavy,
             fontSize: 13,
             fontWeight: 600,
@@ -506,7 +540,7 @@ export function AuthGate({ authHook, colorNavy, colorGold }: AuthGateProps) {
         position: "relative",
         zIndex: 1,
       }}>
-        © KleiΩs 2026 — EcoPatrimoine Conseil
+        © Kleios IFC 2026 — IFC Groupe
       </p>
     </div>
   );

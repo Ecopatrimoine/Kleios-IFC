@@ -302,6 +302,108 @@ function CalComSection({ cabinet, upd, colorNavy, colorGold, userId }: {
 }
 
 
+
+// ── Section Google Places API ─────────────────────────────────────────────────
+
+const SUPABASE_URL_GP  = import.meta.env.VITE_SUPABASE_URL ?? "";
+const SUPABASE_ANON_GP = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
+const ENRICH_PROXY_GP  = `${SUPABASE_URL_GP}/functions/v1/enrich-entreprise`;
+
+function GooglePlacesSection({ cabinet, upd, colorNavy, colorGold: _cg, userId: _uid }: {
+  cabinet: import("../types/crm").CabinetSettings;
+  upd: (key: keyof import("../types/crm").CabinetSettings, val: any) => void;
+  colorNavy: string; colorGold: string; userId: string;
+}) {
+  const [visible,    setVisible]    = React.useState(false);
+  const [testStatus, setTestStatus] = React.useState<"idle" | "testing" | "ok" | "error">("idle");
+  const [testError,  setTestError]  = React.useState("");
+
+  const currentKey = (cabinet as any).googlePlacesApiKey ?? "";
+
+  const handleTest = async () => {
+    if (!currentKey.trim()) { setTestStatus("error"); setTestError("Entrez d'abord votre clé."); return; }
+    setTestStatus("testing"); setTestError("");
+    try {
+      const res = await fetch(ENRICH_PROXY_GP, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_GP },
+        body: JSON.stringify({ testKey: true, googleApiKey: currentKey.trim() }),
+        signal: AbortSignal.timeout(12000),
+      });
+      const data = await res.json();
+      if (data.valid) setTestStatus("ok");
+      else { setTestStatus("error"); setTestError(data.error ?? "Clé invalide"); }
+    } catch { setTestStatus("error"); setTestError("Connexion impossible — réessayez."); }
+  };
+
+  const inp: React.CSSProperties = {
+    flex: 1, padding: "8px 10px", borderRadius: 8, fontFamily: "monospace",
+    border: `1px solid ${testStatus === "ok" ? "#059669" : testStatus === "error" ? "#DC2626" : "#E2E5EC"}`,
+    fontSize: 12, outline: "none", color: "#0D1B2E", background: "#fff",
+    transition: "border-color 0.15s",
+  };
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <Section title="Google Places — Enrichissement prospection" />
+      <div style={{ padding: "14px 16px", background: "#fff", border: "1px solid #E2E5EC", borderRadius: 10, marginBottom: 4 }}>
+        <div style={{ fontSize: 12, color: "#4B5563", marginBottom: 10, lineHeight: 1.6 }}>
+          Permet de récupérer téléphone, site web et horaires lors de la prospection d'entreprises.
+          Votre clé est utilisée directement — elle n'est jamais stockée sur nos serveurs.
+          Google offre <strong>200 $/mois de crédit gratuit</strong> (≈ 70 000 enrichissements/mois).
+        </div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+          <input
+            type={visible ? "text" : "password"}
+            value={currentKey}
+            onChange={e => { upd("googlePlacesApiKey" as any, e.target.value); setTestStatus("idle"); }}
+            placeholder="AIzaSy..."
+            style={inp}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button onClick={() => setVisible(v => !v)} title={visible ? "Masquer" : "Afficher"}
+            style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #E2E5EC", background: "#F9FAFB", color: "#6B7280", cursor: "pointer", fontSize: 14, flexShrink: 0 }}>
+            {visible ? "🙈" : "👁"}
+          </button>
+          <button onClick={handleTest} disabled={testStatus === "testing" || !currentKey.trim()}
+            style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: testStatus === "testing" || !currentKey.trim() ? "#D1D5DB" : colorNavy, color: "#fff", fontSize: 12, fontWeight: 500, cursor: !currentKey.trim() ? "default" : "pointer", fontFamily: "inherit", flexShrink: 0, display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+            {testStatus === "testing" ? (
+              <><span style={{ display: "inline-block", width: 11, height: 11, border: "1.5px solid rgba(255,255,255,0.5)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />Test…</>
+            ) : "● Tester la clé"}
+          </button>
+        </div>
+        {testStatus === "ok" && (
+          <div style={{ padding: "8px 12px", background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 8, fontSize: 12, color: "#065F46", fontWeight: 500 }}>
+            ✅ Clé valide — enrichissement téléphone + site web + horaires opérationnel
+          </div>
+        )}
+        {testStatus === "error" && (
+          <div style={{ padding: "8px 12px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, fontSize: 12, color: "#991B1B" }}>
+            ❌ {testError}
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 3 }}>Vérifiez que Places API (New) est activée dans votre projet Google Cloud.</div>
+          </div>
+        )}
+        {!currentKey.trim() && testStatus === "idle" && (
+          <div style={{ fontSize: 11, color: "#9CA3AF" }}>
+            Sans clé, l'enrichissement fonctionne uniquement via OpenStreetMap (couverture partielle).
+          </div>
+        )}
+        <div style={{ marginTop: 10, display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <a href="https://console.cloud.google.com/apis/library/places-backend.googleapis.com" target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 11, color: colorNavy, fontWeight: 500 }}>
+            → Activer Places API (New) sur Google Cloud ↗
+          </a>
+          <a href="https://console.cloud.google.com/billing/budgets" target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 11, color: "#D97706", fontWeight: 500 }}>
+            → Configurer un budget d'alerte (recommandé : 50 $) ↗
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Section taux commissions ────────────────────────────────────────────────
 interface CommissionRate {
   insurer: string;
@@ -725,6 +827,9 @@ export function SettingsPanel({
             </div>
           </div>
         </div>
+
+        {/* ── GOOGLE PLACES API ── */}
+        <GooglePlacesSection cabinet={cabinet} upd={upd} colorNavy={colorNavy} colorGold={colorGold} userId={userId} />
 
         {/* Note */}
         <div style={{

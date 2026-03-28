@@ -259,14 +259,44 @@ export function useContacts(userId: string | null): UseContactsReturn {
       ploutosClientId: null,
       payload: {
         ...EMPTY_CONTACT_PAYLOAD,
-        contact: {
-          ...EMPTY_CONTACT_PAYLOAD.contact,
+contact: ({
           id,
           userId: userId ?? "",
+          formeJuridique: "",
+          nom: displayName,
+          enseigne: "",
+          siret: "",
+          codeApe: "",
+          codeIdcc: "",
+          numeroTva: "",
+          address1: "",
+          address2: "",
+          postalCode: "",
+          city: "",
+          email: "",
+          telFixe: "",
+          telMobile: "",
+          website: "",
+          nbSalaries: "",
+          activite: "",
+          conventionCollective: "",
+          opco: "",
+          caisseRetraite: "",
+          organismePrevoyanc: "",
+          nonAssujeti: false,
           status: status as any,
+          campus: "",
+          notes: "",
+          scoreRelation: 0,
+          prochainerelance: "",
           createdAt: now,
           updatedAt: now,
-        },
+          syncedAt: null,
+        } as any) as any,
+        contacts: [],
+        alternants: [],
+        postes: [],
+        echanges: [],
       },
       createdAt: now,
       updatedAt: now,
@@ -291,7 +321,10 @@ export function useContacts(userId: string | null): UseContactsReturn {
     const updated = { ...record, updatedAt: now };
 
     setContacts(prev => {
-      const next = prev.map(c => c.id === record.id ? updated : c);
+      const exists = prev.some(c => c.id === record.id);
+      const next = exists
+        ? prev.map(c => c.id === record.id ? updated : c)
+        : [updated, ...prev];  // upsert — ajouter si nouveau
       saveToStorage(userId ?? "", next);
       return next;
     });

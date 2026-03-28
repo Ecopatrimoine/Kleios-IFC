@@ -1,485 +1,551 @@
 // src/components/fiche/FicheClient.tsx
-import { useState } from "react";
-import type { ContactRecord, CabinetSettings } from "../../types/crm";
-import type { CalSlotsCache, BusySlot } from "../../hooks/useCalSync";
-import { TabCivile } from "./TabCivile";
-import { TabContrats } from "./TabContrats";
-import { TabSuivi } from "./TabSuivi";
-import { TabConformite } from "./TabConformite";
-import { TabGed } from "./TabGed";
-import { TabCommissions } from "./TabCommissions";
-import { TabEspace } from "./TabEspace";
-import { CONTACT_STATUS_LABELS } from "../../constants";
+// Fiche entreprise Kleios IFC
+// ─────────────────────────────────────────────────────────────────────────────
 
-type TabId = "synthese" | "civile" | "contrats" | "suivi" | "conformite" | "ged" | "commissions" | "espace";
+import { useState } from "react";
+import type { ContactRecord, EntrepriseContact, Alternant, Echange } from "../../types/crm";
 
 interface FicheClientProps {
   record: ContactRecord;
   onSave: (record: ContactRecord) => void;
   onClose: () => void;
+  onTabChange: (tab: string) => void;
+  onPlanifierVisite?: (entrepriseId: string, entrepriseNom: string) => void;
   colorNavy: string;
   colorGold: string;
-  getBusySlotsForWeek?: (weekKey: string) => CalSlotsCache | null;
-  fetchGoogleSlotsForWeek?: (weekKey: string) => Promise<BusySlot[]>;
-  onCreateGoogleEvent?: (title: string, start: string, end: string, description?: string, googleEventId?: string, location?: string, attendeeEmail?: string) => Promise<string | null>;
-  cabinet?: CabinetSettings;
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
+const ORANGE = "#F26522";
+const NAVY   = "#1A2E44";
+
+const TABS = [
+  { id: "synthese",   label: "Synthèse" },
+  { id: "general",   label: "Informations" },
+  { id: "contacts",  label: "Contacts" },
+  { id: "alternants",label: "Alternants" },
+  { id: "postes",    label: "Postes à pourvoir" },
+  { id: "echanges",  label: "Échanges / Relances" },
+];
+
+const FORME_OPTIONS = ["SA", "SAS", "SASU", "SARL", "EURL", "SNC", "EI", "EIRL", "Auto-entrepreneur", "Association", "Autre"];
+const STATUS_OPTIONS = [
+  { value: "partenaire", label: "Partenaire" },
+  { value: "prospect",   label: "Prospect" },
+  { value: "inactif",    label: "Inactif" },
+];
+const ROLE_OPTIONS = ["dirigeant", "tuteur", "rh", "contact_principal", "autre"];
+
+const field: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: "#4A7FA5", letterSpacing: 0.4, marginBottom: 4, display: "block" };
+const inp: React.CSSProperties  = { border: "1px solid rgba(26,46,68,0.15)", borderRadius: 7, padding: "7px 10px", fontSize: 12, fontFamily: "inherit", color: NAVY, background: "#F9FAFB", width: "100%", outline: "none" };
+const card: React.CSSProperties = { background: "rgba(255,255,255,0.95)", border: "1px solid rgba(26,46,68,0.08)", borderRadius: 10, marginBottom: 14, overflow: "hidden" };
+const cardHead: React.CSSProperties = { padding: "10px 16px", background: "rgba(208,228,242,0.35)", borderBottom: "1px solid rgba(74,127,165,0.12)", fontSize: 12, fontWeight: 600, color: NAVY, display: "flex", alignItems: "center", gap: 8 };
+
+function formatDate(iso: string) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("fr-FR");
 }
 
-function formatE(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M€`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k€`;
-  return `${n}€`;
-}
+export function FicheClient({ record, onSave, onClose, onTabChange: _otc, onPlanifierVisite, colorNavy: _cn, colorGold: _cg }: FicheClientProps) {
+  const [tab, setTab] = useState("synthese");
+  const entreprise = record.payload?.contact;
+  const contacts: EntrepriseContact[] = record.payload?.contacts ?? [];
+  const alternants: Alternant[] = record.payload?.alternants ?? [];
+  const postes: any[] = (record.payload?.postes ?? []) as any;
+  const echanges: Echange[] = record.payload?.echanges ?? [];
 
-// ── Onglet synthèse — dashboard fiche client ──────────────────────────────────
-function TabSynthese({
-  record, colorNavy, colorGold, onTabChange,
-}: {
-  record: ContactRecord;
-  colorNavy: string;
-  colorGold: string;
-  onTabChange: (tab: TabId) => void;
-}) {
-  const p1 = record.payload?.contact?.person1;
-  const p2 = record.payload?.contact?.person2;
-  const contact = record.payload?.contact;
-  const contracts = record.payload?.contracts ?? [];
-  const actifs = contracts.filter(c => c.status === "actif");
-  const encours = actifs.reduce((s, c) => s + (parseFloat((c.currentValue ?? "0").replace(/[^0-9.]/g, "")) || 0), 0);
-  const events = record.payload?.events ?? [];
-  const upcomingRdv = events
-    .filter(e => e.type === "rdv" && e.status === "planifie" && new Date(e.date) > new Date())
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 3);
-  const recentRdv = events
-    .filter(e => e.type === "rdv" && e.status === "realise")
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 2);
-  const conf = (record.payload as any)?.conformite;
-  const mifAttitude = conf?.mif2?.attitude ?? 0;
-  const mifProfile = mifAttitude >= 12 ? "Offensif" : mifAttitude >= 8 ? "Dynamique" : mifAttitude >= 4 ? "Équilibré" : conf ? "Prudent" : null;
-  const missionSigned = conf?.lettreMission?.status === "signee";
-  const missionDate = conf?.lettreMission?.signedDate;
-  const missionExpiry = missionDate ? new Date(new Date(missionDate).getTime() + 2 * 365.25 * 24 * 3600 * 1000) : null;
-  const missionMonths = missionExpiry ? Math.round((missionExpiry.getTime() - Date.now()) / (30 * 24 * 3600 * 1000)) : null;
-  const missionAlert = missionMonths !== null && missionMonths < 3;
+  // Sauvegarde d'un champ entreprise
+  const saveEntreprise = (key: string, value: any) => {
+    onSave({ ...record, payload: { ...record.payload, contact: { ...entreprise, [key]: value } as any } });
+  };
 
-  const card: React.CSSProperties = {
-    background: "rgba(255,255,255,0.92)",
-    border: "1px solid rgba(11,48,64,0.09)",
-    borderRadius: 10,
-    marginBottom: 12,
-    overflow: "hidden",
-    cursor: "pointer",
-    transition: "box-shadow 0.15s",
-  };
-  const cardHeader = (_dot: string): React.CSSProperties => ({
-    padding: "10px 14px",
-    background: "rgba(214,228,240,0.38)",
-    borderBottom: "1px solid rgba(91,130,166,0.12)",
-    display: "flex",
-    alignItems: "center",
-    gap: 7,
-    fontSize: 12,
-    fontWeight: 600,
-    color: colorNavy,
-  });
-  const cardBody: React.CSSProperties = { padding: "12px 14px" };
-  const row: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 };
-  const fieldLabel: React.CSSProperties = { fontSize: 9, fontWeight: 600, color: "#5B82A6", letterSpacing: 0.4, marginBottom: 3 };
-  const fieldVal: React.CSSProperties = { fontSize: 12, color: colorNavy, fontWeight: 400 };
-  const badge = (color: string, bg: string, border: string): React.CSSProperties => ({
-    display: "inline-flex", padding: "2px 8px", borderRadius: 20,
-    fontSize: 9, fontWeight: 500, color, background: bg, border: `1px solid ${border}`,
-  });
+  // ── Formulaire nouvel échange ──
+  const [showEchange, setShowEchange] = useState(false);
+  const [newEchange, setNewEchange] = useState<Partial<Echange>>({ type: "appel", status: "realise", date: new Date().toISOString().slice(0, 10) });
 
-  const miniCard: React.CSSProperties = {
-    background: "rgba(255,255,255,0.92)",
-    border: "1px solid rgba(11,48,64,0.09)",
-    borderRadius: 10, marginBottom: 10, overflow: "hidden",
-    cursor: "pointer",
+  const saveEchange = () => {
+    if (!newEchange.notes && !newEchange.sujet) return;
+    const e: Echange = {
+      id: crypto.randomUUID(), date: newEchange.date ?? new Date().toISOString(),
+      type: newEchange.type ?? "note", status: newEchange.status ?? "realise",
+      interlocuteur: newEchange.interlocuteur ?? "", sujet: newEchange.sujet ?? "",
+      notes: newEchange.notes ?? "", actionSuivante: newEchange.actionSuivante ?? "",
+      dateActionSuivante: newEchange.dateActionSuivante ?? "", createdAt: new Date().toISOString(),
+    };
+    onSave({ ...record, payload: { ...record.payload, echanges: [e, ...echanges] } as any });
+    setShowEchange(false);
+    setNewEchange({ type: "appel", status: "realise", date: new Date().toISOString().slice(0, 10) });
   };
-  const miniHeader: React.CSSProperties = {
-    padding: "9px 12px",
-    background: "rgba(214,228,240,0.38)",
-    borderBottom: "1px solid rgba(91,130,166,0.12)",
-    display: "flex", justifyContent: "space-between", alignItems: "center",
+
+  // ── Formulaire nouveau contact ──
+  const [showContact, setShowContact] = useState(false);
+  const [newContact, setNewContact] = useState<Partial<EntrepriseContact>>({ role: "tuteur", gender: "M" });
+
+  const saveContact = () => {
+    if (!newContact.firstName && !newContact.lastName) return;
+    const c: EntrepriseContact = {
+      id: crypto.randomUUID(), role: newContact.role ?? "autre",
+      gender: newContact.gender ?? "M", firstName: newContact.firstName ?? "",
+      lastName: newContact.lastName ?? "", fonction: newContact.fonction ?? "",
+      email: newContact.email ?? "", phone: newContact.phone ?? "", notes: newContact.notes ?? "",
+    };
+    onSave({ ...record, payload: { ...record.payload, contacts: [...contacts, c] } as any });
+    setShowContact(false);
+    setNewContact({ role: "tuteur", gender: "M" });
   };
+
+  // Header couleurs
+  const statusColors: Record<string, string> = { partenaire: "#059669", prospect: ORANGE, inactif: "#9CA3AF" };
+  const statusColor = statusColors[record.status] ?? "#9CA3AF";
 
   return (
-    <div style={{ display: "flex", gap: 14 }}>
-
-      {/* ── Colonne principale ── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-
-        {/* Identité */}
-        <div style={card} onClick={() => onTabChange("civile")}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(11,48,64,0.10)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
-          <div style={cardHeader("#5B82A6")}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: colorGold }} />
-            Identité — Personne 1
-            <span style={{ marginLeft: "auto", ...badge("#1E6B52", "rgba(46,139,110,0.12)", "rgba(46,139,110,0.20)") }}>
-              {p1?.firstName ? "Complet" : "À remplir"}
+    <div>
+      {/* ── Header entreprise ── */}
+      <div style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #2A4A6B 100%)`, borderRadius: 12, padding: "18px 22px", marginBottom: 16, display: "flex", alignItems: "center", gap: 16, position: "relative", boxShadow: "0 4px 20px rgba(26,46,68,0.22)" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${ORANGE}, #F5855A)`, borderRadius: "12px 12px 0 0" }} />
+        {/* Logo initiales */}
+        <div style={{ width: 52, height: 52, borderRadius: 12, background: `${ORANGE}25`, border: `2px solid ${ORANGE}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: ORANGE, flexShrink: 0 }}>
+          {record.displayName.slice(0, 2).toUpperCase()}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "#fff" }}>{record.displayName}</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 3 }}>
+            {[entreprise?.formeJuridique, entreprise?.siret, entreprise?.city].filter(Boolean).join(" · ")}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <span style={{ padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, background: `${statusColor}25`, color: statusColor, border: `1px solid ${statusColor}40` }}>
+            {STATUS_OPTIONS.find(s => s.value === record.status)?.label ?? record.status}
+          </span>
+          {record.campus && (
+            <span style={{ padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500, background: `${ORANGE}20`, color: ORANGE, border: `1px solid ${ORANGE}35` }}>
+              {record.campus}
             </span>
-            <span style={{ fontSize: 10, color: "#5B82A6", marginLeft: 8 }}>Modifier →</span>
-          </div>
-          <div style={cardBody}>
-            <div style={row}>
-              <div><div style={fieldLabel}>PRÉNOM</div><div style={fieldVal}>{p1?.firstName || "—"}</div></div>
-              <div><div style={fieldLabel}>NOM</div><div style={fieldVal}>{p1?.lastName || "—"}</div></div>
-              <div><div style={fieldLabel}>DATE DE NAISSANCE</div><div style={fieldVal}>{p1?.birthDate ? new Date(p1.birthDate).toLocaleDateString("fr-FR") : "—"}</div></div>
-              <div><div style={fieldLabel}>CSP</div><div style={fieldVal}>{p1?.csp || "—"}</div></div>
-            </div>
-            <div style={{ marginTop: 4 }}>
-              <div style={fieldLabel}>ADRESSE</div>
-              <div style={fieldVal}>{[p1?.address, p1?.postalCode, p1?.city].filter(Boolean).join(", ") || "—"}</div>
-            </div>
-            {p1?.email && <div style={{ marginTop: 8, display: "flex", gap: 16 }}>
-              <div><div style={fieldLabel}>EMAIL</div><div style={{ ...fieldVal, fontSize: 11 }}>{p1.email}</div></div>
-              {p1?.phone && <div><div style={fieldLabel}>TÉLÉPHONE</div><div style={{ ...fieldVal, fontSize: 11 }}>{p1.phone}</div></div>}
-            </div>}
-          </div>
-        </div>
-
-        {/* Personne 2 si couple */}
-        {p2 && (
-          <div style={card} onClick={() => onTabChange("civile")}
-            onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(11,48,64,0.10)")}
-            onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
-            <div style={cardHeader("#5B82A6")}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, background: "#5B82A6", transform: "rotate(45deg)" }} />
-              Identité — Personne 2
-              <span style={{ marginLeft: "auto", fontSize: 10, color: "#5B82A6" }}>Modifier →</span>
-            </div>
-            <div style={cardBody}>
-              <div style={row}>
-                <div><div style={fieldLabel}>PRÉNOM</div><div style={fieldVal}>{p2.firstName || "—"}</div></div>
-                <div><div style={fieldLabel}>NOM</div><div style={fieldVal}>{p2.lastName || "—"}</div></div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Situation familiale */}
-        <div style={card} onClick={() => onTabChange("civile")}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(11,48,64,0.10)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
-          <div style={cardHeader("#5B82A6")}>
-            <div style={{ width: 8, height: 8, borderRadius: 2, background: "#5B82A6", transform: "rotate(45deg)" }} />
-            Situation familiale & foyer
-            <span style={{ marginLeft: "auto", fontSize: 10, color: "#5B82A6" }}>Modifier →</span>
-          </div>
-          <div style={cardBody}>
-            <div style={row}>
-              <div><div style={fieldLabel}>STATUT CIVIL</div>
-                <div style={fieldVal}>{
-                  { celibataire: "Célibataire", marie: "Marié(e)", pacse: "Pacsé(e)", concubin: "Concubin(e)", divorce: "Divorcé(e)", veuf: "Veuf/Veuve" }[contact?.civilStatus ?? ""] ?? "—"
-                }</div>
-              </div>
-              <div><div style={fieldLabel}>RÉGIME</div>
-                <div style={fieldVal}>{
-                  ({ communaute_legale: "Communauté légale", separation_biens: "Séparation de biens", communaute_universelle: "Communauté universelle", participation_acquets: "Part. aux acquêts" } as Record<string, string>)[contact?.matrimonialRegime ?? ""] ?? "—"
-                }</div>
-              </div>
-              {contact?.weddingDate && <div><div style={fieldLabel}>DATE MARIAGE / PACS</div><div style={fieldVal}>{new Date(contact.weddingDate).toLocaleDateString("fr-FR")}</div></div>}
-            </div>
-          </div>
-        </div>
-
-
-
-                {/* Conformité résumé */}
-        <div style={card} onClick={() => onTabChange("conformite")}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(11,48,64,0.10)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
-          <div style={cardHeader("#5B82A6")}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#5B82A6" }} />
-            Conformité DDA / MIF2 / KYC
-            <span style={{ marginLeft: "auto", fontSize: 10, color: "#5B82A6" }}>Détail →</span>
-          </div>
-          <div style={cardBody}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 11, color: "#5E7A88" }}>Lettre mission</span>
-                <span style={missionAlert
-                  ? badge("#991B1B", "rgba(220,38,38,0.10)", "rgba(220,38,38,0.18)")
-                  : missionSigned ? badge("#1E6B52", "rgba(46,139,110,0.12)", "rgba(46,139,110,0.20)")
-                  : badge("#5E7A88", "rgba(11,48,64,0.07)", "rgba(11,48,64,0.12)")}>
-                  {missionAlert ? `⚠ ${missionMonths}m` : missionSigned ? "Signée" : "À signer"}
-                </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 11, color: "#5E7A88" }}>KYC</span>
-                <span style={conf?.kyc?.idVerifiedDate ? badge("#1E6B52", "rgba(46,139,110,0.12)", "rgba(46,139,110,0.20)") : badge("#5E7A88", "rgba(11,48,64,0.07)", "rgba(11,48,64,0.12)")}>
-                  {conf?.kyc?.idVerifiedDate ? "Validé" : "À faire"}
-                </span>
-              </div>
-              {mifProfile && <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 11, color: "#5E7A88" }}>Profil MIF2</span>
-                <span style={badge("#3A6080", "rgba(91,130,166,0.12)", "rgba(91,130,166,0.22)")}>{mifProfile}</span>
-              </div>}
-            </div>
-          </div>
+          )}
+          <button onClick={onClose} style={{ padding: "6px 14px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.10)", color: "#fff", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>← Retour</button>
         </div>
       </div>
 
-      {/* ── Colonne droite — synthèse rapide ── */}
-      <div style={{ width: 500, flexShrink: 0 }}>
-
-        {/* Encours */}
-        <div style={{ ...miniCard, cursor: "default" }}>
-          <div style={{ padding: "12px 14px" }}>
-            <div style={{ fontSize: 9, color: "#8FAAB6", letterSpacing: 0.5, marginBottom: 4 }}>ENCOURS TOTAL</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: colorNavy, lineHeight: 1 }}>{encours > 0 ? formatE(encours) : "—"}</div>
-            <div style={{ fontSize: 10, color: "#5E7A88", marginTop: 5 }}>{actifs.length} contrat{actifs.length > 1 ? "s" : ""} actif{actifs.length > 1 ? "s" : ""}</div>
-            <div style={{ fontSize: 10, color: "#5E7A88" }}>{events.filter(e => e.type === "rdv" && e.status === "realise").length} RDV réalisés</div>
-          </div>
-        </div>
-
-{/* Contrats résumé */}
-        <div style={card} onClick={() => onTabChange("contrats")}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(11,48,64,0.10)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}>
-          <div style={cardHeader(colorGold)}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: colorGold }} />
-            Contrats ({actifs.length} actif{actifs.length > 1 ? "s" : ""})
-            <span style={{ marginLeft: "auto", fontSize: 10, color: "#5B82A6" }}>Gérer →</span>
-          </div>
-          <div style={cardBody}>
-            {actifs.length === 0 ? (
-              <div style={{ fontSize: 12, color: "#8FAAB6" }}>Aucun contrat actif</div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                {actifs.slice(0, 6).map(c => (
-                  <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 9px", background: "#EEF4F9", borderRadius: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 6, background: colorNavy, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontSize: 8, color: colorGold, fontWeight: 700 }}>{c.type.toUpperCase().slice(0,2)}</span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 500, color: colorNavy, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.productName || c.type}</div>
-                      <div style={{ fontSize: 9, color: "#8FAAB6" }}>{c.insurer}</div>
-                    </div>
-                    {(parseFloat((c.currentValue ?? "0").replace(/[^0-9.]/g, "")) > 0) && (
-                      <div style={{ fontSize: 11, fontWeight: 700, color: colorNavy, flexShrink: 0 }}>{formatE(parseFloat(c.currentValue!.replace(/[^0-9.]/g, "")))}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            {actifs.length > 4 && <div style={{ fontSize: 10, color: "#8FAAB6", marginTop: 6, textAlign: "center" }}>+{actifs.length - 4} autres contrats</div>}
-          </div>
-        </div>
-
-        {/* Prochains RDV */}
-        <div style={miniCard} onClick={() => onTabChange("suivi")}>
-          <div style={miniHeader}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: colorNavy }}>Agenda</span>
-            <span style={{ fontSize: 10, color: "#5B82A6" }}>+ RDV →</span>
-          </div>
-          <div style={{ padding: "10px 12px" }}>
-            {upcomingRdv.length === 0 ? (
-              <div style={{ fontSize: 11, color: "#8FAAB6" }}>Aucun RDV planifié</div>
-            ) : upcomingRdv.map((e, i) => (
-              <div key={e.id} style={{ display: "flex", gap: 7, paddingBottom: i < upcomingRdv.length - 1 ? 8 : 0, marginBottom: i < upcomingRdv.length - 1 ? 8 : 0, borderBottom: i < upcomingRdv.length - 1 ? "1px solid rgba(11,48,64,0.07)" : "none" }}>
-                <div style={{ width: 7, height: 7, borderRadius: "50%", background: colorGold, marginTop: 3, flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: colorNavy }}>{e.title || "RDV"}</div>
-                  <div style={{ fontSize: 10, color: "#8FAAB6" }}>
-                    {new Date(e.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })} · {new Date(e.date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Derniers RDV */}
-        {recentRdv.length > 0 && (
-          <div style={miniCard} onClick={() => onTabChange("suivi")}>
-            <div style={miniHeader}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: colorNavy }}>Derniers RDV</span>
-            </div>
-            <div style={{ padding: "10px 12px" }}>
-              {recentRdv.map((e, i) => (
-                <div key={e.id} style={{ display: "flex", gap: 7, paddingBottom: i < recentRdv.length - 1 ? 8 : 0, marginBottom: i < recentRdv.length - 1 ? 8 : 0, borderBottom: i < recentRdv.length - 1 ? "1px solid rgba(11,48,64,0.07)" : "none" }}>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#8FAAB6", marginTop: 3, flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: colorNavy }}>{e.title || "RDV"}</div>
-                    <div style={{ fontSize: 10, color: "#8FAAB6" }}>{new Date(e.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Notes */}
-        {contact?.notes && (
-          <div style={{ ...miniCard, cursor: "default" }}>
-            <div style={miniHeader}><span style={{ fontSize: 11, fontWeight: 600, color: colorNavy }}>Notes</span></div>
-            <div style={{ padding: "10px 12px", fontSize: 11, color: "#5E7A88", lineHeight: 1.5 }}>
-              {contact.notes.slice(0, 120)}{contact.notes.length > 120 ? "..." : ""}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Composant principal ───────────────────────────────────────────────────────
-export function FicheClient({
-  record, onSave, onClose, colorNavy, colorGold,
-  getBusySlotsForWeek, fetchGoogleSlotsForWeek, onCreateGoogleEvent, cabinet,
-}: FicheClientProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("synthese");
-
-  const tabs: { id: TabId; label: string }[] = [
-    { id: "synthese",    label: "Fiche client" },
-    { id: "civile",      label: "Fiche civile" },
-    { id: "contrats",    label: "Contrats" },
-    { id: "suivi",       label: "Suivi commercial" },
-    { id: "conformite",  label: "Conformité" },
-    { id: "ged",         label: "GED" },
-    { id: "commissions", label: "Commissions" },
-    { id: "espace",      label: "Espace client" },
-  ];
-
-  const contractCount = record.payload?.contracts?.length ?? 0;
-  const encours = (record.payload?.contracts ?? []).reduce((s, c) => s + (parseFloat((c.currentValue ?? "0").replace(/[^0-9.]/g, "")) || 0), 0);
-  const rdvCount = (record.payload?.events ?? []).filter(e => e.type === "rdv" && e.status === "realise").length;
-
-  const renderTab = () => {
-    switch (activeTab) {
-      case "synthese":    return <TabSynthese record={record} colorNavy={colorNavy} colorGold={colorGold} onTabChange={setActiveTab} />;
-      case "civile":      return <TabCivile record={record} onSave={onSave} colorNavy={colorNavy} colorGold={colorGold} />;
-      case "contrats":    return <TabContrats record={record} onSave={onSave} colorNavy={colorNavy} colorGold={colorGold} />;
-      case "suivi":       return <TabSuivi record={record} onSave={onSave} colorNavy={colorNavy} colorGold={colorGold} cabinet={cabinet} getBusySlotsForWeek={getBusySlotsForWeek} fetchGoogleSlotsForWeek={fetchGoogleSlotsForWeek} onCreateGoogleEvent={onCreateGoogleEvent} />;
-      case "conformite":  return <TabConformite record={record} onSave={onSave} colorNavy={colorNavy} colorGold={colorGold} />;
-      case "ged":         return <TabGed record={record} onSave={onSave} colorNavy={colorNavy} colorGold={colorGold} />;
-      case "commissions": return <TabCommissions record={record} onSave={onSave} colorNavy={colorNavy} colorGold={colorGold} />;
-      case "espace":      return <TabEspace record={record} onSave={onSave} colorNavy={colorNavy} colorGold={colorGold} />;
-    }
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-
-      {/* ── Header petrol ── */}
-      <div style={{
-        background: `linear-gradient(135deg, ${colorNavy} 0%, #144260 100%)`,
-        borderRadius: "12px 12px 0 0",
-        padding: "14px 20px",
-        boxShadow: "0 4px 20px rgba(11,48,64,0.20)",
-        flexShrink: 0,
-      }}>
-        <button onClick={onClose} style={{
-          display: "inline-flex", alignItems: "center", gap: 6,
-          color: "rgba(255,255,255,0.48)", fontSize: 11,
-          cursor: "pointer", background: "none", border: "none",
-          padding: "0 0 10px 0", fontFamily: "inherit",
-        }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
-          onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.48)")}
-        >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          Retour clients
-        </button>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {/* Avatar */}
-          <div style={{
-            width: 46, height: 46, borderRadius: "50%", background: colorGold, flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 15, fontWeight: 700, color: colorNavy,
-            border: "2px solid rgba(255,255,255,0.18)", boxShadow: "0 2px 10px rgba(201,168,76,0.35)",
+      {/* ── Tabs ── */}
+      <div style={{ display: "flex", gap: 2, marginBottom: 18, background: "rgba(255,255,255,0.80)", borderRadius: 10, border: "1px solid rgba(26,46,68,0.08)", overflow: "hidden" }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            flex: 1, padding: "10px 8px", border: "none", borderBottom: `2px solid ${tab === t.id ? ORANGE : "transparent"}`,
+            background: tab === t.id ? `${ORANGE}08` : "transparent",
+            color: tab === t.id ? ORANGE : "#7A9AB0",
+            fontSize: 12, fontWeight: tab === t.id ? 600 : 400,
+            cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
           }}>
-            {getInitials(record.displayName)}
-          </div>
-
-          {/* Nom + meta */}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 600, color: "#fff" }}>{record.displayName}</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
-              {[CONTACT_STATUS_LABELS[record.status], record.payload?.contact?.person1?.csp, record.payload?.contact?.person1?.city].filter(Boolean).join(" · ")}
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div style={{ display: "flex", gap: 24, marginRight: 24 }}>
-            {[
-              { val: encours > 0 ? formatE(encours) : "—", label: "ENCOURS" },
-              { val: contractCount.toString(), label: "CONTRATS" },
-              { val: rdvCount.toString(), label: "RDV" },
-            ].map(({ val, label }) => (
-              <div key={label} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", lineHeight: 1 }}>{val}</div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.38)", marginTop: 3, letterSpacing: 0.5 }}>{label}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 500, background: "rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.88)", border: "1px solid rgba(255,255,255,0.20)" }}>
-              {CONTACT_STATUS_LABELS[record.status]}
-            </span>
-            {record.ploutosClientId && (
-              <span style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.10)", color: colorGold, fontSize: 10, fontWeight: 500, padding: "3px 9px", borderRadius: 20, border: "1px solid rgba(201,168,76,0.28)" }}>
-                π Ploutos lié
-              </span>
-            )}
-            <button onClick={() => setActiveTab("suivi")} style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "7px 14px",
-              borderRadius: 7, border: "none", background: colorGold, color: colorNavy,
-              fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-              boxShadow: "0 2px 8px rgba(201,168,76,0.30)",
-            }}>
-              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-              Nouveau RDV
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Onglets ── */}
-      <div style={{
-        display: "flex", flexShrink: 0,
-        background: "rgba(255,255,255,0.80)",
-        borderLeft: "1px solid rgba(11,48,64,0.09)",
-        borderRight: "1px solid rgba(11,48,64,0.09)",
-        borderBottom: "1px solid rgba(11,48,64,0.09)",
-        overflowX: "auto",
-      }}>
-        {tabs.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-            padding: "10px 15px", fontSize: 12, cursor: "pointer",
-            color: activeTab === tab.id ? "#5B82A6" : "#8FAAB6",
-            background: activeTab === tab.id ? "rgba(214,228,240,0.55)" : "none",
-            border: "none",
-            borderBottom: activeTab === tab.id ? "2px solid #5B82A6" : "2px solid transparent",
-            whiteSpace: "nowrap", fontWeight: activeTab === tab.id ? 600 : 400,
-            fontFamily: "inherit", transition: "all 0.15s",
-          }}
-            onMouseEnter={e => { if (activeTab !== tab.id) (e.currentTarget as HTMLElement).style.color = "#5B82A6"; }}
-            onMouseLeave={e => { if (activeTab !== tab.id) (e.currentTarget as HTMLElement).style.color = "#8FAAB6"; }}
-          >
-            {tab.label}
+            {t.label}
+            {t.id === "alternants" && alternants.length > 0 && <span style={{ marginLeft: 4, background: ORANGE, color: "#fff", borderRadius: 10, padding: "0 5px", fontSize: 10 }}>{alternants.length}</span>}
+            {t.id === "postes" && postes.filter(p => p.status === "ouvert").length > 0 && <span style={{ marginLeft: 4, background: "#059669", color: "#fff", borderRadius: 10, padding: "0 5px", fontSize: 10 }}>{postes.filter(p => p.status === "ouvert").length}</span>}
+            {t.id === "echanges" && echanges.length > 0 && <span style={{ marginLeft: 4, background: "#4A7FA5", color: "#fff", borderRadius: 10, padding: "0 5px", fontSize: 10 }}>{echanges.length}</span>}
           </button>
         ))}
       </div>
 
-      {/* ── Contenu ── */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 0 0 0", minHeight: 0 }}>
-        {renderTab()}
-      </div>
+      {/* ── Synthèse ── */}
+      {tab === "synthese" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 14 }}>
+          {/* Colonne gauche */}
+          <div>
+            {/* KPIs */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+              {[
+                { label: "Alternants historique", value: alternants.length, color: NAVY },
+                { label: "Postes ouverts", value: postes.filter(p => p.status === "ouvert").length, color: "#059669" },
+                { label: "Échanges RRE", value: echanges.length, color: "#4A7FA5" },
+              ].map(k => (
+                <div key={k.label} style={{ ...card, marginBottom: 0 }}>
+                  <div style={{ padding: "12px 14px" }}>
+                    <div style={{ fontSize: 9, color: "#9CA3AF", letterSpacing: 0.5, marginBottom: 4 }}>{k.label.toUpperCase()}</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: k.color }}>{k.value}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Infos rapides */}
+            <div style={card}>
+              <div style={cardHead}><div style={{ width: 8, height: 8, borderRadius: "50%", background: ORANGE }} />Identité</div>
+              <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {[
+                  { label: "Forme juridique", val: entreprise?.formeJuridique },
+                  { label: "SIRET", val: entreprise?.siret },
+                  { label: "Code APE", val: entreprise?.codeApe },
+                  { label: "Convention collective", val: entreprise?.conventionCollective },
+                  { label: "OPCO", val: entreprise?.opco },
+                  { label: "Nb salariés", val: entreprise?.nbSalaries },
+                ].map(({ label, val }) => (
+                  <div key={label}>
+                    <div style={field}>{label.toUpperCase()}</div>
+                    <div style={{ fontSize: 13, color: val ? NAVY : "#9CA3AF" }}>{val || "—"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Derniers échanges */}
+            {echanges.length > 0 && (
+              <div style={card}>
+                <div style={cardHead}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4A7FA5" }} />Derniers échanges</div>
+                <div style={{ padding: "8px 0" }}>
+                  {echanges.slice(0, 3).map((e, i) => (
+                    <div key={e.id} style={{ padding: "10px 16px", borderBottom: i < 2 && i < echanges.slice(0, 3).length - 1 ? "1px solid rgba(26,46,68,0.06)" : "none", display: "flex", gap: 12 }}>
+                      <div style={{ fontSize: 11, color: "#9CA3AF", minWidth: 70, flexShrink: 0 }}>{formatDate(e.date)}</div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 500, color: NAVY }}>{e.sujet || e.type}</div>
+                        <div style={{ fontSize: 11, color: "#7A9AB0", marginTop: 2 }}>{e.notes?.slice(0, 80)}{(e.notes?.length ?? 0) > 80 ? "..." : ""}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Colonne droite */}
+          <div>
+            {/* Coordonnées */}
+            <div style={card}>
+              <div style={cardHead}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4A7FA5" }} />Coordonnées</div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { label: "Adresse", val: [entreprise?.address1, entreprise?.address2, entreprise?.postalCode, entreprise?.city].filter(Boolean).join(", ") },
+                  { label: "Email", val: entreprise?.email },
+                  { label: "Téléphone fixe", val: entreprise?.telFixe },
+                  { label: "Mobile", val: entreprise?.telMobile },
+                ].map(({ label, val }) => (
+                  <div key={label}>
+                    <div style={field}>{label.toUpperCase()}</div>
+                    <div style={{ fontSize: 12, color: val ? NAVY : "#9CA3AF" }}>{val || "—"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Contacts entreprise */}
+            <div style={card}>
+              <div style={{ ...cardHead, justifyContent: "space-between" }}>
+                <span><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#059669", display: "inline-block", marginRight: 8 }} />Contacts ({contacts.length})</span>
+                <button onClick={() => { setTab("contacts"); }} style={{ fontSize: 10, color: ORANGE, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>Gérer →</button>
+              </div>
+              <div style={{ padding: "8px 0" }}>
+                {contacts.length === 0 ? (
+                  <div style={{ padding: "12px 16px", fontSize: 12, color: "#9CA3AF" }}>Aucun contact renseigné</div>
+                ) : contacts.slice(0, 3).map(c => (
+                  <div key={c.id} style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: `${ORANGE}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: ORANGE }}>
+                      {(c.firstName[0] ?? "") + (c.lastName[0] ?? "")}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: NAVY }}>{c.firstName} {c.lastName}</div>
+                      <div style={{ fontSize: 10, color: "#9CA3AF" }}>{c.role} {c.email ? `· ${c.email}` : ""}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Alternants récents */}
+            {alternants.length > 0 && (
+              <div style={card}>
+                <div style={{ ...cardHead, justifyContent: "space-between" }}>
+                  <span><div style={{ width: 8, height: 8, borderRadius: "50%", background: NAVY, display: "inline-block", marginRight: 8 }} />Alternants</span>
+                  <button onClick={() => setTab("alternants")} style={{ fontSize: 10, color: ORANGE, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>Tous →</button>
+                </div>
+                <div style={{ padding: "8px 0" }}>
+                  {alternants.slice(0, 4).map(a => (
+                    <div key={a.id} style={{ padding: "7px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontSize: 12, color: NAVY }}>{a.prenom} {a.nom}</div>
+                      <div style={{ fontSize: 11, color: "#9CA3AF" }}>{a.classe} {a.annee}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Informations générales ── */}
+      {tab === "general" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={card}>
+            <div style={cardHead}>Identité juridique</div>
+            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                { label: "Forme juridique", key: "formeJuridique", type: "select", options: FORME_OPTIONS },
+                { label: "Nom", key: "nom" },
+                { label: "Enseigne", key: "enseigne" },
+                { label: "SIRET", key: "siret" },
+                { label: "Code APE", key: "codeApe" },
+                { label: "Code IDCC", key: "codeIdcc" },
+                { label: "Numéro TVA", key: "numeroTva" },
+                { label: "Nb salariés", key: "nbSalaries", type: "number" },
+              ].map(({ label, key, type, options }) => (
+                <div key={key}>
+                  <label style={field}>{label.toUpperCase()}</label>
+                  {type === "select" ? (
+                    <select value={(entreprise as any)?.[key] ?? ""} onChange={e => saveEntreprise(key, e.target.value)} style={{ ...inp, appearance: "none" }}>
+                      <option value="">—</option>
+                      {options!.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  ) : (
+                    <input type={type ?? "text"} value={(entreprise as any)?.[key] ?? ""} onChange={e => saveEntreprise(key, e.target.value)} style={inp} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div style={card}>
+              <div style={cardHead}>Coordonnées</div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  { label: "Adresse 1", key: "address1" },
+                  { label: "Adresse 2", key: "address2" },
+                  { label: "Code postal", key: "postalCode" },
+                  { label: "Ville", key: "city" },
+                  { label: "Email", key: "email", type: "email" },
+                  { label: "Téléphone fixe", key: "telFixe" },
+                  { label: "Mobile", key: "telMobile" },
+                  { label: "Site web", key: "website" },
+                ].map(({ label, key, type }) => (
+                  <div key={key}>
+                    <label style={field}>{label.toUpperCase()}</label>
+                    <input type={type ?? "text"} value={(entreprise as any)?.[key] ?? ""} onChange={e => saveEntreprise(key, e.target.value)} style={inp} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={card}>
+              <div style={cardHead}>Formation & OPCO</div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  { label: "Secteur d'activité", key: "activite" },
+                  { label: "Convention collective", key: "conventionCollective" },
+                  { label: "OPCO", key: "opco" },
+                  { label: "Caisse de retraite", key: "caisseRetraite" },
+                ].map(({ label, key }) => (
+                  <div key={key}>
+                    <label style={field}>{label.toUpperCase()}</label>
+                    <input value={(entreprise as any)?.[key] ?? ""} onChange={e => saveEntreprise(key, e.target.value)} style={inp} />
+                  </div>
+                ))}
+                <div>
+                  <label style={field}>STATUT CRM</label>
+                  <select value={record.status} onChange={e => onSave({ ...record, status: e.target.value as any })} style={{ ...inp, appearance: "none" }}>
+                    {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={field}>NOTES</label>
+                  <textarea value={entreprise?.notes ?? ""} onChange={e => saveEntreprise("notes", e.target.value)} style={{ ...inp, height: 80, resize: "vertical" }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Contacts entreprise ── */}
+      {tab === "contacts" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+            <button onClick={() => setShowContact(true)} style={{ padding: "7px 16px", borderRadius: 7, border: "none", background: ORANGE, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              + Ajouter un contact
+            </button>
+          </div>
+          {showContact && (
+            <div style={{ ...card, marginBottom: 14 }}>
+              <div style={cardHead}>Nouveau contact</div>
+              <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                {[
+                  { label: "Prénom", key: "firstName" }, { label: "Nom", key: "lastName" },
+                  { label: "Fonction", key: "fonction" }, { label: "Email", key: "email", type: "email" },
+                  { label: "Téléphone", key: "phone" }, { label: "Notes", key: "notes" },
+                ].map(({ label, key, type }) => (
+                  <div key={key}>
+                    <label style={field}>{label.toUpperCase()}</label>
+                    <input type={type ?? "text"} value={(newContact as any)[key] ?? ""} onChange={e => setNewContact(f => ({ ...f, [key]: e.target.value }))} style={inp} />
+                  </div>
+                ))}
+                <div>
+                  <label style={field}>RÔLE</label>
+                  <select value={newContact.role ?? "tuteur"} onChange={e => setNewContact(f => ({ ...f, role: e.target.value as any }))} style={{ ...inp, appearance: "none" }}>
+                    {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div style={{ gridColumn: "1/-1", display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button onClick={() => setShowContact(false)} style={{ padding: "7px 14px", borderRadius: 7, border: "1px solid rgba(26,46,68,0.15)", background: "#fff", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Annuler</button>
+                  <button onClick={saveContact} style={{ padding: "7px 16px", borderRadius: 7, border: "none", background: ORANGE, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Enregistrer</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {contacts.length === 0 ? (
+            <div style={{ ...card, padding: 30, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucun contact renseigné</div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {contacts.map(c => (
+                <div key={c.id} style={card}>
+                  <div style={{ padding: 14, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${ORANGE}15`, border: `1px solid ${ORANGE}25`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: ORANGE, flexShrink: 0 }}>
+                      {(c.firstName[0] ?? "") + (c.lastName[0] ?? "")}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{c.firstName} {c.lastName}</div>
+                      <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 1, textTransform: "capitalize" }}>{c.role}{c.fonction ? ` · ${c.fonction}` : ""}</div>
+                      {c.email && <div style={{ fontSize: 12, color: "#4A7FA5", marginTop: 4 }}>✉ {c.email}</div>}
+                      {c.phone && <div style={{ fontSize: 12, color: "#4B5563", marginTop: 2 }}>☎ {c.phone}</div>}
+                      {c.notes && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6, fontStyle: "italic" }}>{c.notes}</div>}
+                    </div>
+                    <button onClick={() => { const updated = contacts.filter(x => x.id !== c.id); onSave({ ...record, payload: { ...record.payload, contacts: updated } as any }); }}
+                      style={{ padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(220,38,38,0.2)", background: "#fff", fontSize: 11, cursor: "pointer", color: "#DC2626" }}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Alternants ── */}
+      {tab === "alternants" && (
+        <div>
+          <div style={{ ...card, overflow: "hidden" }}>
+            <div style={cardHead}><div style={{ width: 8, height: 8, borderRadius: "50%", background: NAVY }} />Historique des alternants ({alternants.length})</div>
+            {alternants.length === 0 ? (
+              <div style={{ padding: 30, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucun alternant enregistré — importez depuis Gesform ou saisissez manuellement.</div>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#F9FAFB" }}>
+                    {["Nom", "Formation", "Année", "Type", "Statut"].map(h => (
+                      <th key={h} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, fontWeight: 500, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 0.4, borderBottom: "1px solid rgba(26,46,68,0.08)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {alternants.map((a, i) => (
+                    <tr key={a.id} style={{ borderBottom: i < alternants.length - 1 ? "1px solid rgba(26,46,68,0.06)" : "none" }}>
+                      <td style={{ padding: "10px 16px", fontSize: 13, fontWeight: 500, color: NAVY }}>{a.prenom} {a.nom}</td>
+                      <td style={{ padding: "10px 16px", fontSize: 12, color: "#4B5563" }}>{a.classe}</td>
+                      <td style={{ padding: "10px 16px", fontSize: 12, color: "#4B5563" }}>{a.annee}</td>
+                      <td style={{ padding: "10px 16px" }}>
+                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: a.type === "apprentissage" ? "#DBEAFE" : a.type === "pro" ? "#D1FAE5" : "#F3F4F6", color: a.type === "apprentissage" ? "#1D4ED8" : a.type === "pro" ? "#065F46" : "#6B7280" }}>
+                          {a.type}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 16px" }}>
+                        <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: a.statut === "en_cours" ? `${ORANGE}15` : "#F3F4F6", color: a.statut === "en_cours" ? ORANGE : "#6B7280" }}>
+                          {a.statut === "en_cours" ? "En cours" : a.statut === "termine" ? "Terminé" : "Rompu"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Postes à pourvoir ── */}
+      {tab === "postes" && (
+        <div style={{ ...card, padding: 30, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>
+          Module postes à pourvoir — à développer
+        </div>
+      )}
+
+      {/* ── Échanges / Relances ── */}
+      {tab === "echanges" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+            <button onClick={() => setShowEchange(true)} style={{ padding: "7px 16px", borderRadius: 7, border: "none", background: ORANGE, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              + Nouvel échange
+            </button>
+            {onPlanifierVisite && (
+              <button
+                onClick={() => onPlanifierVisite(record.id, record.displayName)}
+                style={{ padding: "7px 16px", borderRadius: 7, border: `1px solid ${NAVY}25`, background: "#fff", color: NAVY, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
+                📋 Planifier une visite tuteur
+              </button>
+            )}
+          </div>
+          {showEchange && (
+            <div style={{ ...card, marginBottom: 14 }}>
+              <div style={cardHead}>Saisir un échange</div>
+              <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={field}>DATE</label>
+                  <input type="date" value={newEchange.date ?? ""} onChange={e => setNewEchange(f => ({ ...f, date: e.target.value }))} style={inp} />
+                </div>
+                <div>
+                  <label style={field}>TYPE</label>
+                  <select value={newEchange.type ?? "appel"} onChange={e => setNewEchange(f => ({ ...f, type: e.target.value as any }))} style={{ ...inp, appearance: "none" }}>
+                    {["appel", "email", "visite", "note", "relance"].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={field}>INTERLOCUTEUR</label>
+                  <input value={newEchange.interlocuteur ?? ""} onChange={e => setNewEchange(f => ({ ...f, interlocuteur: e.target.value }))} placeholder="Nom du RRE ou contact" style={inp} />
+                </div>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={field}>SUJET</label>
+                  <input value={newEchange.sujet ?? ""} onChange={e => setNewEchange(f => ({ ...f, sujet: e.target.value }))} placeholder="Objet de l'échange" style={inp} />
+                </div>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={field}>NOTES / COMPTE-RENDU</label>
+                  <textarea value={newEchange.notes ?? ""} onChange={e => setNewEchange(f => ({ ...f, notes: e.target.value }))} rows={3} style={{ ...inp, height: 80, resize: "vertical" }} />
+                </div>
+                <div>
+                  <label style={field}>ACTION SUIVANTE</label>
+                  <input value={newEchange.actionSuivante ?? ""} onChange={e => setNewEchange(f => ({ ...f, actionSuivante: e.target.value }))} placeholder="Rappeler, envoyer convention..." style={inp} />
+                </div>
+                <div>
+                  <label style={field}>DATE ACTION SUIVANTE</label>
+                  <input type="date" value={newEchange.dateActionSuivante ?? ""} onChange={e => setNewEchange(f => ({ ...f, dateActionSuivante: e.target.value }))} style={inp} />
+                </div>
+                <div style={{ gridColumn: "1/-1", display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button onClick={() => setShowEchange(false)} style={{ padding: "7px 14px", borderRadius: 7, border: "1px solid rgba(26,46,68,0.15)", background: "#fff", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Annuler</button>
+                  <button onClick={saveEchange} style={{ padding: "7px 16px", borderRadius: 7, border: "none", background: ORANGE, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Enregistrer</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {echanges.length === 0 ? (
+            <div style={{ ...card, padding: 30, textAlign: "center", color: "#9CA3AF", fontSize: 13 }}>Aucun échange enregistré</div>
+          ) : (
+            <div>
+              {echanges.map((e) => (
+                <div key={e.id} style={{ ...card }}>
+                  <div style={{ padding: "12px 16px", display: "flex", gap: 14, alignItems: "flex-start" }}>
+                    <div style={{ minWidth: 80, textAlign: "right" }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: NAVY }}>{formatDate(e.date)}</div>
+                      <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 8, background: `${ORANGE}15`, color: ORANGE, textTransform: "capitalize" }}>{e.type}</span>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      {e.sujet && <div style={{ fontSize: 13, fontWeight: 600, color: NAVY, marginBottom: 4 }}>{e.sujet}</div>}
+                      <div style={{ fontSize: 12, color: "#4B5563", lineHeight: 1.5 }}>{e.notes}</div>
+                      {e.interlocuteur && <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>Par : {e.interlocuteur}</div>}
+                      {e.actionSuivante && (
+                        <div style={{ marginTop: 8, padding: "6px 10px", background: `${ORANGE}10`, border: `1px solid ${ORANGE}25`, borderRadius: 6, fontSize: 11, color: ORANGE }}>
+                          → {e.actionSuivante}{e.dateActionSuivante ? ` (avant le ${formatDate(e.dateActionSuivante)})` : ""}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => { const updated = echanges.filter(x => x.id !== e.id); onSave({ ...record, payload: { ...record.payload, echanges: updated } as any }); }}
+                      style={{ padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(220,38,38,0.2)", background: "#fff", fontSize: 11, cursor: "pointer", color: "#DC2626" }}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

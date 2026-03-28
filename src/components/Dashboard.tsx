@@ -3,7 +3,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useMemo } from "react";
-import { MapWidget } from "./MapWidget";
 import type { ContactRecord } from "../types/crm";
 
 interface DashboardProps {
@@ -12,7 +11,6 @@ interface DashboardProps {
   colorGold: string;
   onOpenContact: (record: ContactRecord) => void;
   onNavigate: (id: string) => void;
-  onSaveContact: (record: import("../types/crm").ContactRecord) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -133,13 +131,13 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }
 // ── Dashboard principal ───────────────────────────────────────────────────────
 
 export function Dashboard({
-  contacts, colorNavy, colorGold, onOpenContact, onNavigate, onSaveContact: _os,
+  contacts, colorNavy, colorGold, onOpenContact, onNavigate,
 }: DashboardProps) {
 
   const stats = useMemo(() => {
     const total = contacts.length;
-    const vip = contacts.filter(c => c.status === "vip").length;
-    const clients = contacts.filter(c => c.status === "client").length;
+    const vip = 0;
+    const clients = contacts.filter(c => c.status === "partenaire").length;
     const prospects = contacts.filter(c => c.status === "prospect").length;
 
     // Encours total
@@ -424,14 +422,6 @@ export function Dashboard({
             </div>
           )}
         </div>
-
-        {/* Carte clients */}
-        <MapWidget
-          contacts={contacts}
-          onOpenMapView={() => onNavigate("carte")}
-          colorNavy={colorNavy}
-          colorGold={colorGold}
-        />
 
         {/* Activité récente */}
         <div style={{

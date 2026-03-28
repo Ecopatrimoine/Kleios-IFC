@@ -27,7 +27,7 @@ interface TabSuiviProps {
   cabinet?: CabinetSettings;
   getBusySlotsForWeek?: (weekKey: string) => CalSlotsCache | null;
   fetchGoogleSlotsForWeek?: (weekKey: string) => Promise<import("../../hooks/useCalSync").BusySlot[]>;
-  onCreateGoogleEvent?: (title: string, start: string, end: string, description?: string, googleEventId?: string, location?: string, attendeeEmail?: string) => Promise<string | null>;
+  onCreateGoogleEvent?: (title: string, start: string, end: string, description?: string) => Promise<boolean>;
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ function EventItem({
 // ── Formulaire création / modification ────────────────────────────────────────
 
 function EventForm({
-  initial, onSave, onClose, colorNavy, colorGold, cabinet, contactAddress, contactName, contactEmail, getBusySlotsForWeek, fetchGoogleSlotsForWeek, onCreateGoogleEvent,
+  initial, onSave, onClose, colorNavy, colorGold, cabinet, contactAddress, getBusySlotsForWeek, fetchGoogleSlotsForWeek, onCreateGoogleEvent,
 }: {
   initial?: CommercialEvent | null;
   onSave: (e: CommercialEvent) => void;
@@ -254,11 +254,9 @@ function EventForm({
   colorGold: string;
   cabinet?: CabinetSettings;
   contactAddress?: string;
-  contactName?: string;
-  contactEmail?: string;
   getBusySlotsForWeek?: (weekKey: string) => CalSlotsCache | null;
   fetchGoogleSlotsForWeek?: (weekKey: string) => Promise<import("../../hooks/useCalSync").BusySlot[]>;
-  onCreateGoogleEvent?: (title: string, start: string, end: string, description?: string, googleEventId?: string, location?: string, attendeeEmail?: string) => Promise<string | null>;
+  onCreateGoogleEvent?: (title: string, start: string, end: string, description?: string) => Promise<boolean>;
 }) {
   const isEdit = !!initial;
   const [type, setType]         = useState<EventType>(initial?.type ?? "rdv");
@@ -325,33 +323,12 @@ function EventForm({
     };
     onSave(event);
 
-    // Créer/mettre à jour dans Google Calendar
+    // Créer dans Google Calendar si connecté et type RDV
     if (onCreateGoogleEvent && event.type === "rdv" && event.status !== "annule" && event.date) {
       const endDate = new Date(new Date(event.date).getTime() + (event.duration || 60) * 60000);
       const p = (n: number) => String(n).padStart(2, "0");
       const toLocalISO = (d: Date) => `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-      const CANAL_LABELS: Record<string, string> = { tel: "Telephone", visio: "Visioconference", physique: "Presentiel" };
-      const LOC_LABELS: Record<string, string> = { cabinet: "Au cabinet", domicile_client: "Domicile client", exterieur: "Lieu exterieur" };
-      const descParts: string[] = [];
-      if (event.channel) descParts.push("Canal : " + (CANAL_LABELS[event.channel] ?? event.channel));
-      if (event.location) descParts.push("Lieu : " + (LOC_LABELS[event.location] ?? event.location));
-      if (event.locationAddress) descParts.push("Adresse : " + event.locationAddress);
-      if (event.body) descParts.push("Compte rendu : " + event.body);
-      const description = descParts.join(" | ");
-      // Titre : NOM Prénom / titre du RDV
-      const googleContactName = contactName ?? "";
-      const googleTitle = googleContactName ? googleContactName + " / " + (event.title || "RDV") : (event.title || "RDV");
-
-      // Lieu Google = adresse si extérieur, sinon label du lieu
-      const LOC_GOOGLE: Record<string, string> = { cabinet: "Cabinet", domicile_client: event.locationAddress || "Domicile client", exterieur: event.locationAddress || "" };
-      const googleLocation = event.location ? (LOC_GOOGLE[event.location] || event.locationAddress) : event.locationAddress;
-
-      const existingGoogleId = initial?.rdvLink?.startsWith("google:") ? initial.rdvLink.slice(7) : undefined;
-      const googleId = await onCreateGoogleEvent(googleTitle, event.date.slice(0, 16), toLocalISO(endDate), description, existingGoogleId, googleLocation || undefined, contactEmail || undefined);
-      if (googleId && !existingGoogleId) {
-        event.rdvLink = "google:" + googleId;
-        onSave(event);
-      }
+      await onCreateGoogleEvent(event.title || "RDV", event.date.slice(0, 16), toLocalISO(endDate), event.body || "");
     }
   };
 
@@ -574,7 +551,7 @@ export function TabSuivi({ record, onSave, colorNavy, colorGold, cabinet, getBus
 
   // Adresse du contact pour pré-remplissage
   const contactAddress = (() => {
-    const p1 = record.payload?.contact?.person1;
+    const p1 = (record.payload?.contact as any)?.person1;
     if (!p1) return "";
     return [p1.address, p1.postalCode, p1.city].filter(Boolean).join(", ");
   })();
@@ -593,6 +570,14 @@ export function TabSuivi({ record, onSave, colorNavy, colorGold, cabinet, getBus
     }
 
     onSave({ ...record, payload: { ...record.payload, events: newEvents } });
+
+    // Créer/mettre à jour dans Google Calendar si connecté
+    if (onCreateGoogleEvent && event.type === "rdv" && event.status !== "annule" && event.date) {
+      const endDate = new Date(new Date(event.date).getTime() + (event.duration || 60) * 60000);
+      const p = (n: number) => String(n).padStart(2, "0");
+      const toLocalISO = (d: Date) => `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+      await onCreateGoogleEvent(event.title || "RDV", event.date.slice(0, 16), toLocalISO(endDate), event.body || "");
+    }
 
     setShowForm(false);
     setEditingEvent(null);
@@ -699,8 +684,6 @@ export function TabSuivi({ record, onSave, colorNavy, colorGold, cabinet, getBus
             colorGold={colorGold}
             cabinet={cabinet}
             contactAddress={contactAddress}
-            contactName={record.displayName}
-            contactEmail={record.payload?.contact?.person1?.email || record.payload?.contact?.person2?.email || undefined}
             getBusySlotsForWeek={getBusySlotsForWeek}
             fetchGoogleSlotsForWeek={fetchGoogleSlotsForWeek}
             onCreateGoogleEvent={onCreateGoogleEvent}

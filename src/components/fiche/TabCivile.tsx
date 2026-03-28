@@ -17,24 +17,21 @@ interface TabCivileProps {
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{
-      background: "rgba(255,255,255,0.92)",
-      border: "1px solid rgba(11,48,64,0.09)",
+      background: "#fff",
+      border: "1px solid #E2E5EC",
       borderRadius: 10,
-      marginBottom: 14,
-      overflow: "hidden",
+      padding: 16,
+      marginBottom: 16,
     }}>
       <div style={{
-        padding: "11px 16px",
-        background: "rgba(214,228,240,0.38)",
-        borderBottom: "1px solid rgba(91,130,166,0.13)",
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
+        fontSize: 13,
+        fontWeight: 600,
+        color: "#0D1B2E",
+        marginBottom: 14,
       }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#5B82A6", flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#0B3040" }}>{title}</span>
+        {title}
       </div>
-      <div style={{ padding: 16 }}>{children}</div>
+      {children}
     </div>
   );
 }
@@ -54,7 +51,7 @@ function Field({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <label style={{ fontSize: 10, color: "#5B82A6", fontWeight: 600, letterSpacing: "0.4px" }}>
+      <label style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>
         {label}
       </label>
       <input
@@ -63,18 +60,17 @@ function Field({
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         style={{
-          border: "1px solid rgba(11,48,64,0.14)",
-          borderRadius: 7,
-          padding: "6px 10px",
-          fontSize: 12,
-          color: "#0B3040",
+          border: "1px solid #E2E5EC",
+          borderRadius: 6,
+          padding: "7px 10px",
+          fontSize: 13,
+          color: "#0D1B2E",
           fontFamily: "inherit",
           outline: "none",
-          background: "#F6F8FA",
-          width: "100%",
+          background: "#fff",
         }}
-        onFocus={e => { e.currentTarget.style.borderColor = "#5B82A6"; e.currentTarget.style.background = "#fff"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(91,130,166,0.12)"; }}
-        onBlur={e => { e.currentTarget.style.borderColor = "rgba(11,48,64,0.14)"; e.currentTarget.style.background = "#F6F8FA"; e.currentTarget.style.boxShadow = "none"; }}
+        onFocus={e => (e.currentTarget.style.borderColor = "#C9A84C")}
+        onBlur={e => (e.currentTarget.style.borderColor = "#E2E5EC")}
       />
     </div>
   );
@@ -105,7 +101,7 @@ function Toggle({
           height: 20,
           borderRadius: 10,
           border: "none",
-          background: value ? "#0B3040" : "rgba(11,48,64,0.15)",
+          background: value ? "#0D1B2E" : "#D1D5DB",
           cursor: "pointer",
           position: "relative",
           transition: "background 0.2s",
@@ -248,8 +244,8 @@ export function TabCivile({ record, onSave, colorNavy, colorGold }: TabCivilePro
     <div>
       {/* Personne 1 */}
       <PersonForm
-        person={contact.person1}
-        title={`Personne 1 — ${contact.person1.firstName || "Prénom"} ${contact.person1.lastName || "Nom"}`}
+        person={(contact as any)?.person1}
+        title={`Personne 1 — ${(contact as any)?.person1.firstName || "Prénom"} ${(contact as any)?.person1.lastName || "Nom"}`}
         onChange={handlePerson1Change}
       />
 
@@ -262,23 +258,21 @@ export function TabCivile({ record, onSave, colorNavy, colorGold }: TabCivilePro
         }}>
           {/* Situation */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <label style={{ fontSize: 10, color: "#5B82A6", fontWeight: 600, letterSpacing: "0.4px" }}>
+            <label style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>
               Situation civile
             </label>
             <select
-              value={contact.civilStatus}
+              value={(contact as any)?.civilStatus}
               onChange={e => handleFoyerChange("civilStatus", e.target.value)}
               style={{
-                border: "1px solid rgba(11,48,64,0.14)",
-                borderRadius: 7,
-                padding: "6px 10px",
-                fontSize: 12,
-                color: "#0B3040",
+                border: "1px solid #E2E5EC",
+                borderRadius: 6,
+                padding: "7px 10px",
+                fontSize: 13,
+                color: "#0D1B2E",
                 fontFamily: "inherit",
                 outline: "none",
-                background: "#F6F8FA",
-                width: "100%",
-                cursor: "pointer",
+                background: "#fff",
               }}
             >
               <option value="celibataire">Célibataire</option>
@@ -292,23 +286,21 @@ export function TabCivile({ record, onSave, colorNavy, colorGold }: TabCivilePro
 
           {/* Régime matrimonial */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <label style={{ fontSize: 10, color: "#5B82A6", fontWeight: 600, letterSpacing: "0.4px" }}>
+            <label style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>
               Régime matrimonial
             </label>
             <select
-              value={contact.matrimonialRegime ?? ""}
+              value={(contact as any)?.matrimonialRegime ?? ""}
               onChange={e => handleFoyerChange("matrimonialRegime", e.target.value)}
               style={{
-                border: "1px solid rgba(11,48,64,0.14)",
-                borderRadius: 7,
-                padding: "6px 10px",
-                fontSize: 12,
-                color: "#0B3040",
+                border: "1px solid #E2E5EC",
+                borderRadius: 6,
+                padding: "7px 10px",
+                fontSize: 13,
+                color: "#0D1B2E",
                 fontFamily: "inherit",
                 outline: "none",
-                background: "#F6F8FA",
-                width: "100%",
-                cursor: "pointer",
+                background: "#fff",
               }}
             >
               <option value="">—</option>
@@ -322,7 +314,7 @@ export function TabCivile({ record, onSave, colorNavy, colorGold }: TabCivilePro
           {/* Date mariage */}
           <Field
             label="Date mariage / PACS"
-            value={contact.weddingDate ?? ""}
+            value={(contact as any)?.weddingDate ?? ""}
             onChange={v => handleFoyerChange("weddingDate", v)}
             type="date"
           />
@@ -330,11 +322,11 @@ export function TabCivile({ record, onSave, colorNavy, colorGold }: TabCivilePro
       </InfoCard>
 
       {/* Personne 2 */}
-      {contact.person2 ? (
+      {(contact as any)?.person2 ? (
         <div>
           <PersonForm
-            person={contact.person2}
-            title={`Personne 2 — ${contact.person2.firstName || "Prénom"} ${contact.person2.lastName || "Nom"}`}
+            person={(contact as any)?.person2}
+            title={`Personne 2 — ${(contact as any)?.person2.firstName || "Prénom"} ${(contact as any)?.person2.lastName || "Nom"}`}
             onChange={handlePerson2Change}
           />
           <button
@@ -384,18 +376,18 @@ export function TabCivile({ record, onSave, colorNavy, colorGold }: TabCivilePro
 
       {/* Famille liée */}
       <InfoCard title="Famille liée">
-        {(contact.familyLinks ?? []).length === 0 ? (
+        {(((contact as any)?.familyLinks ?? []) ?? []).length === 0 ? (
           <div style={{ fontSize: 13, color: "#9CA3AF", padding: "8px 0" }}>
             Aucun lien familial enregistré.
           </div>
         ) : (
-          contact.familyLinks.map((link, i) => (
+          ((contact as any)?.familyLinks ?? []).map((link: any, i: number) => (
             <div key={i} style={{
               display: "flex",
               alignItems: "center",
               gap: 10,
               padding: "8px 0",
-              borderBottom: i < contact.familyLinks.length - 1
+              borderBottom: i < ((contact as any)?.familyLinks ?? []).length - 1
                 ? "1px solid #F0F2F6" : "none",
             }}>
               <div style={{
@@ -444,19 +436,18 @@ export function TabCivile({ record, onSave, colorNavy, colorGold }: TabCivilePro
           rows={4}
           style={{
             width: "100%",
-            border: "1px solid rgba(11,48,64,0.14)",
-            borderRadius: 7,
+            border: "1px solid #E2E5EC",
+            borderRadius: 6,
             padding: "8px 10px",
-            fontSize: 12,
+            fontSize: 13,
             fontFamily: "inherit",
-            color: "#0B3040",
+            color: "#0D1B2E",
             resize: "vertical",
             outline: "none",
-            boxSizing: "border-box" as const,
-            background: "#F6F8FA",
+            boxSizing: "border-box",
           }}
-          onFocus={e => { e.currentTarget.style.borderColor = "#5B82A6"; e.currentTarget.style.background = "#fff"; }}
-          onBlur={e => { e.currentTarget.style.borderColor = "rgba(11,48,64,0.14)"; e.currentTarget.style.background = "#F6F8FA"; }}
+          onFocus={e => (e.currentTarget.style.borderColor = colorGold)}
+          onBlur={e => (e.currentTarget.style.borderColor = "#E2E5EC")}
         />
       </InfoCard>
     </div>

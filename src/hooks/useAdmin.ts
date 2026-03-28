@@ -24,7 +24,9 @@ export function useAdmin(userEmail: string | null | undefined) {
 export interface AdminUser {
   id: string;
   email: string;
-  cabinet_name: string;       // depuis raw_user_meta_data
+  first_name: string;
+  last_name: string;
+  school: string;
   created_at: string;
   licence: {
     type: "trial" | "paid" | "lifetime" | null;
@@ -64,15 +66,18 @@ export function useAdminDashboard(isAdmin: boolean) {
       // 2. Infos cabinets via vue partagée users_info
       const { data: usersInfo } = await supabase
         .from("users_info")
-        .select("user_id, email, cabinet_name, created_at");
+        .select("user_id, email, first_name, last_name, school, created_at");
 
       const userMap = new Map<string, {
-        name: string; email: string; created_at: string;
+        name: string; email: string; first_name: string; last_name: string; school: string; created_at: string;
       }>();
       usersInfo?.forEach(u => {
         userMap.set(u.user_id, {
-          name: u.cabinet_name || u.email || u.user_id.slice(0, 12) + "...",
+          name: [u.first_name, u.last_name].filter(Boolean).join(" ") || u.email || u.user_id.slice(0, 12) + "...",
           email: u.email || "",
+          first_name: u.first_name || "",
+          last_name: u.last_name || "",
+          school: u.school || "",
           created_at: u.created_at || "",
         });
       });
@@ -84,7 +89,9 @@ export function useAdminDashboard(isAdmin: boolean) {
         result.push({
           id: userId,
           email: info?.email || "",
-          cabinet_name: info?.name || info?.email || userId.slice(0, 12) + "...",
+          first_name: info?.first_name || "",
+          last_name: info?.last_name || "",
+          school: info?.school || "",
           created_at: info?.created_at || "",
           licence: { ...lic, cancel_at: lic.cancel_at ?? null },
         });
@@ -131,6 +138,33 @@ export function useAdminDashboard(isAdmin: boolean) {
 
   // ── Actions compte ────────────────────────────────────────────────────────
 
+
+  // ── Créer un compte utilisateur (via Edge Function service_role) ──────────
+  const createUser = useCallback(async (params: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    school: string;
+    licence_type: "trial" | "lifetime" | "admin";
+  }) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(params),
+        }
+      );
+      const data = await res.json();
+      if (data.error) return { success: false, message: data.error };
+      await fetchUsers();
+      return { success: true, message: "Compte créé — email d'invitation envoyé" };
+    } catch (e: any) {
+      return { success: false, message: e.message || "Erreur" };
+    }
+  }, [fetchUsers]);
+
   const resetUserPassword = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
@@ -167,42 +201,12 @@ export function useAdminDashboard(isAdmin: boolean) {
     }
   }, [fetchUsers]);
 
-  // ── Détails Stripe ────────────────────────────────────────────────────────
-
-  const loadSubDetails = useCallback(async (userList: AdminUser[]) => {
-    const paidUsers = userList.filter(
-      u => u.licence?.type === "paid" && u.licence?.stripe_sub
-    );
-    if (paidUsers.length === 0) return;
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-sub-details`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            stripe_sub_ids: paidUsers.map(u => u.licence!.stripe_sub),
-          }),
-        }
-      );
-      const details = await res.json();
-      setUsers(prev => prev.map(u =>
-        u.licence?.stripe_sub && details[u.licence.stripe_sub]
-          ? { ...u, subDetails: details[u.licence.stripe_sub] }
-          : u
-      ));
-    } catch { /* non bloquant */ }
-  }, []);
-
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
-  useEffect(() => {
-    if (users.length > 0) loadSubDetails(users);
-  }, [users.length]); // eslint-disable-line
 
   return {
     users, loading, error,
     fetchUsers,
     setLifetime, revokeLicence, extendTrial,
-    resetUserPassword, deleteAccount,
+    resetUserPassword, deleteAccount, createUser,
   };
 }

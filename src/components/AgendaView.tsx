@@ -3,21 +3,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useMemo } from "react";
-import type { ContactRecord, EventType, CalBookingUnlinked } from "../types/crm";
+import type { ContactRecord, EventType } from "../types/crm";
 
 interface AgendaViewProps {
   contacts: ContactRecord[];
   colorNavy: string;
   colorGold: string;
-  rdvUrl: string;
-  rdvProvider: string;
+  rdvUrl: string;          // lien Cal.com / Calendly depuis paramètres cabinet
+  rdvProvider: string;     // "none" | "cal" | "calendly" | "custom"
   onOpenContact: (record: ContactRecord) => void;
-  // Cal.com orphelins
-  orphanBookings?: CalBookingUnlinked[];
-  onLinkBooking?: (calBookingId: string, contactId: string) => void;
-  onDismissBooking?: (calBookingId: string) => void;
-  calSyncing?: boolean;
-  calError?: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -58,7 +52,6 @@ function isSameDay(d1: Date, d2: Date): boolean {
 
 export function AgendaView({
   contacts, colorNavy, colorGold, rdvUrl, rdvProvider, onOpenContact,
-  orphanBookings = [], onLinkBooking, onDismissBooking, calSyncing, calError,
 }: AgendaViewProps) {
 
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -67,8 +60,6 @@ export function AgendaView({
   });
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date());
   const [filterType, setFilterType] = useState<"tous" | EventType>("tous");
-  const [linkingBooking, setLinkingBooking] = useState<CalBookingUnlinked | null>(null);
-  const [linkSearch, setLinkSearch] = useState("");
 
   // Tous les événements de tous les contacts
   const allEvents = useMemo(() => {
@@ -303,206 +294,6 @@ export function AgendaView({
             </button>
           ))}
         </div>
-
-
-      {/* ── RDV Cal.com à rattacher ── */}
-      {orphanBookings.length > 0 && (
-        <div style={{
-          background: "#FFFBEB",
-          border: "1px solid #FCD34D",
-          borderRadius: 12,
-          padding: "14px 16px",
-          marginBottom: 12,
-        }}>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 10,
-          }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#92400E" }}>
-              ⚠ {orphanBookings.length} RDV Cal.com à rattacher
-            </div>
-            {calSyncing && (
-              <span style={{ fontSize: 11, color: "#9CA3AF" }}>Synchronisation...</span>
-            )}
-          </div>
-          {calError && (
-            <div style={{ fontSize: 11, color: "#991B1B", marginBottom: 8 }}>
-              Erreur Cal.com : {calError}
-            </div>
-          )}
-          {orphanBookings.map(o => (
-            <div key={o.calBookingId} style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "8px 10px",
-              borderRadius: 8,
-              background: "#fff",
-              border: "1px solid #FDE68A",
-              marginBottom: 6,
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: "#0D1B2E" }}>
-                  {o.attendeeName || o.attendeeEmail || "Inconnu"}
-                </div>
-                <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-                  {o.calEventTypeLabel} · {new Date(o.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
-                  {o.attendeeEmail && ` · ${o.attendeeEmail}`}
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                <button
-                  onClick={() => { setLinkingBooking(o); setLinkSearch(""); }}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: 6,
-                    border: "none",
-                    background: colorNavy,
-                    color: "#fff",
-                    fontSize: 11,
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  Rattacher
-                </button>
-                <button
-                  onClick={() => onDismissBooking?.(o.calBookingId)}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: 6,
-                    border: "1px solid #FCA5A5",
-                    background: "#fff",
-                    color: "#EF4444",
-                    fontSize: 11,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Modal rattachement ── */}
-      {linkingBooking && (
-        <div
-          onClick={() => setLinkingBooking(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: "#fff",
-              borderRadius: 12,
-              padding: 20,
-              width: 400,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
-            }}
-          >
-            <div style={{ fontSize: 14, fontWeight: 600, color: colorNavy, marginBottom: 6 }}>
-              Rattacher le RDV à un client
-            </div>
-            <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12 }}>
-              {linkingBooking.calEventTypeLabel} — {new Date(linkingBooking.date).toLocaleDateString("fr-FR")}
-              {linkingBooking.attendeeEmail && ` — ${linkingBooking.attendeeEmail}`}
-            </div>
-            <input
-              type="text"
-              placeholder="Rechercher un client..."
-              value={linkSearch}
-              onChange={e => setLinkSearch(e.target.value)}
-              autoFocus
-              style={{
-                width: "100%",
-                border: "1px solid #E2E5EC",
-                borderRadius: 8,
-                padding: "8px 10px",
-                fontSize: 13,
-                fontFamily: "inherit",
-                outline: "none",
-                marginBottom: 10,
-                boxSizing: "border-box",
-              }}
-            />
-            <div style={{ maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
-              {contacts
-                .filter(c =>
-                  !linkSearch ||
-                  c.displayName.toLowerCase().includes(linkSearch.toLowerCase()) ||
-                  c.payload?.contact?.person1?.email?.toLowerCase().includes(linkSearch.toLowerCase())
-                )
-                .slice(0, 8)
-                .map(c => (
-                  <div
-                    key={c.id}
-                    onClick={() => {
-                      onLinkBooking?.(linkingBooking.calBookingId, c.id);
-                      setLinkingBooking(null);
-                    }}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      cursor: "pointer",
-                      border: "1px solid #E2E5EC",
-                      fontSize: 13,
-                      color: "#0D1B2E",
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#F8F9FB")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
-                  >
-                    <span style={{ fontWeight: 500 }}>{c.displayName}</span>
-                    {c.payload?.contact?.person1?.email && (
-                      <span style={{ fontSize: 11, color: "#9CA3AF", marginLeft: 8 }}>
-                        {c.payload.contact.person1.email}
-                      </span>
-                    )}
-                  </div>
-                ))
-              }
-              {contacts.filter(c =>
-                !linkSearch ||
-                c.displayName.toLowerCase().includes(linkSearch.toLowerCase())
-              ).length === 0 && (
-                <div style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", padding: "10px 0" }}>
-                  Aucun client trouvé
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => setLinkingBooking(null)}
-              style={{
-                marginTop: 12,
-                width: "100%",
-                padding: "8px",
-                border: "1px solid #E2E5EC",
-                borderRadius: 8,
-                background: "#fff",
-                color: "#6B7280",
-                fontSize: 12,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              Annuler
-            </button>
-          </div>
-        </div>
-      )}
 
         {/* Événements du jour sélectionné */}
         {selectedDay && (

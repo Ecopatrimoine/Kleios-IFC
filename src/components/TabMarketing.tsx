@@ -2,7 +2,7 @@
 // Module Marketing — campagnes email ciblées avec templates
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { ContactRecord, CabinetSettings, CampaignRecord, CampaignTemplate } from "../types/crm";
 import { supabase } from "../lib/supabase";
 
@@ -229,7 +229,7 @@ function getMissionExpiresInMonths(record: ContactRecord): number {
 }
 
 function applyTemplate(html: string, record: ContactRecord, cabinet: CabinetSettings): string {
-  const p1 = record.payload?.contact?.person1;
+  const p1 = (record.payload?.contact as any);
   const prenom = p1?.firstName || record.displayName.split(" ")[0] || record.displayName;
   const annee = new Date().getFullYear().toString();
   const rdvUrl = cabinet.rdvUrl;
@@ -282,32 +282,6 @@ export function TabMarketing({ contacts, cabinet, userId, colorNavy, colorGold }
   const [sendResult, setSendResult] = useState<{ ok: number; fail: number } | null>(null);
 
   // Historique stocké localement
-  // IDs pré-sélectionnés depuis la carte (sessionStorage)
-  const [preselectIds, setPreselectIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("kleios_marketing_preselect");
-      if (raw) {
-        const ids: string[] = JSON.parse(raw);
-        if (ids.length > 0) {
-          setPreselectIds(ids);
-          setActiveTab("nouvelle");
-          // Sélectionner un template si pas déjà fait
-          if (!selectedTemplate) {
-            const tpl = TEMPLATES.find(t => t.id === "bilan_annuel") ?? TEMPLATES[0];
-            setSelectedTemplate(tpl);
-            setSubject(tpl.defaultSubject.replace(/{{cabinet}}/g, "Notre cabinet").replace(/{{annee}}/g, new Date().getFullYear().toString()));
-            setBodyHtml(tpl.defaultBody);
-            setCampaignName(tpl.label + " — sélection carte");
-            setStep(2);
-          }
-        }
-        sessionStorage.removeItem("kleios_marketing_preselect");
-      }
-    } catch { /* ignore */ }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const [campaigns, setCampaigns] = useState<CampaignRecord[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(`kleios_campaigns_${userId}`) ?? "[]");
@@ -321,17 +295,9 @@ export function TabMarketing({ contacts, cabinet, userId, colorNavy, colorGold }
 
   // ── Filtrage des destinataires ────────────────────────────────────────────
   const filteredContacts = useMemo(() => {
-    // Si pré-sélection depuis la carte → ignorer les filtres manuels
-    if (preselectIds.length > 0) {
-      return contacts.filter(c => {
-        const p1 = c.payload?.contact?.person1;
-        const email = p1?.email || c.payload?.contact?.person2?.email;
-        return email && preselectIds.includes(c.id);
-      });
-    }
     return contacts.filter(record => {
-      const p1 = record.payload?.contact?.person1;
-      const email = p1?.email || record.payload?.contact?.person2?.email;
+      const p1 = (record.payload?.contact as any);
+      const email = p1?.email || record.payload?.contact?.email;
       if (!email) return false; // pas d'email = exclu
 
       if (filter.status.length > 0 && !filter.status.includes(record.status)) return false;
@@ -364,7 +330,7 @@ export function TabMarketing({ contacts, cabinet, userId, colorNavy, colorGold }
       }
       return true;
     });
-  }, [contacts, filter, preselectIds]);
+  }, [contacts, filter]);
 
   // ── Sélection template ────────────────────────────────────────────────────
   const handleSelectTemplate = (tpl: TemplateConfig) => {
@@ -382,7 +348,7 @@ export function TabMarketing({ contacts, cabinet, userId, colorNavy, colorGold }
     let ok = 0, fail = 0;
 
     for (const record of filteredContacts) {
-      const email = record.payload?.contact?.person1?.email || record.payload?.contact?.person2?.email;
+      const email = record.payload?.contact?.email || record.payload?.contact?.email;
       if (!email) { fail++; continue; }
 
       const personalizedBody = applyTemplate(bodyHtml, record, cabinet);
@@ -413,7 +379,7 @@ export function TabMarketing({ contacts, cabinet, userId, colorNavy, colorGold }
       status: "envoye",
       recipientIds: filteredContacts.map(c => c.id),
       recipientNames: filteredContacts.map(c => c.displayName),
-      recipientEmails: filteredContacts.map(c => c.payload?.contact?.person1?.email || c.payload?.contact?.person2?.email || ""),
+      recipientEmails: filteredContacts.map(c => c.payload?.contact?.email || c.payload?.contact?.email || ""),
       sentCount: ok,
       sentAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -462,7 +428,7 @@ export function TabMarketing({ contacts, cabinet, userId, colorNavy, colorGold }
       <div style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: 18, fontWeight: 600, color: colorNavy, margin: 0 }}>Marketing & Campagnes</h2>
         <p style={{ fontSize: 12, color: "#9CA3AF", marginTop: 3, marginBottom: 0 }}>
-          {contacts.filter(c => c.payload?.contact?.person1?.email || c.payload?.contact?.person2?.email).length} clients avec email · {campaigns.length} campagne{campaigns.length > 1 ? "s" : ""} envoyée{campaigns.length > 1 ? "s" : ""}
+          {contacts.filter(c => c.payload?.contact?.email || c.payload?.contact?.email).length} clients avec email · {campaigns.length} campagne{campaigns.length > 1 ? "s" : ""} envoyée{campaigns.length > 1 ? "s" : ""}
         </p>
       </div>
 
@@ -620,7 +586,7 @@ export function TabMarketing({ contacts, cabinet, userId, colorNavy, colorGold }
                 {filteredContacts.length > 0 && (
                   <div style={{ marginTop: 14, maxHeight: 160, overflowY: "auto", border: "1px solid #F0F2F6", borderRadius: 8, padding: "6px 0" }}>
                     {filteredContacts.map(c => {
-                      const email = c.payload?.contact?.person1?.email || c.payload?.contact?.person2?.email;
+                      const email = c.payload?.contact?.email || c.payload?.contact?.email;
                       return (
                         <div key={c.id} style={{ display: "flex", justifyContent: "space-between", padding: "4px 12px", fontSize: 12, color: "#374151" }}>
                           <span style={{ fontWeight: 500 }}>{c.displayName}</span>

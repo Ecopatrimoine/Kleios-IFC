@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import type { User, Session } from "@supabase/supabase-js";
 
 // CORRECTION 1 — majuscule K → minuscule k pour cohérence avec les autres clés
-const lastVerifiedKey = (uid: string) => `kleios_last_verified_${uid}`;
+const LAST_VERIFIED_KEY = "kleios_last_verified";
 const GRACE_PERIOD_MS = 72 * 60 * 60 * 1000; // 72 heures
 
 export type AuthState =
@@ -21,18 +21,16 @@ export function useAuth() {
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const initializedRef = useRef(false);
 
-  const checkGracePeriod = useCallback((uid?: string): boolean => {
+  const checkGracePeriod = useCallback((): boolean => {
     try {
-      const key = uid ? lastVerifiedKey(uid) : "kleios_last_verified";
-      const raw = localStorage.getItem(key);
+      const raw = localStorage.getItem(LAST_VERIFIED_KEY);
       if (!raw) return false;
       return Date.now() - parseInt(raw, 10) < GRACE_PERIOD_MS;
     } catch { return false; }
   }, []);
 
-  const markVerified = useCallback((uid?: string) => {
-    const key = uid ? lastVerifiedKey(uid) : "kleios_last_verified";
-    localStorage.setItem(key, Date.now().toString());
+  const markVerified = useCallback(() => {
+    localStorage.setItem(LAST_VERIFIED_KEY, Date.now().toString());
   }, []);
 
   const purgeSupabaseTokens = useCallback(() => {
@@ -65,7 +63,7 @@ export function useAuth() {
           setAuthState("expired");
           return;
         }
-        markVerified(refreshData.user.id);
+        markVerified();
         setSession(refreshData.session);
         setUser(refreshData.user);
         setAuthState("authenticated");
@@ -78,8 +76,7 @@ export function useAuth() {
 
       if (isNetworkError) {
         setUser(null);
-        const uid = currentSession?.user?.id;
-        setAuthState(checkGracePeriod(uid) ? "grace" : "expired");
+        setAuthState(checkGracePeriod() ? "grace" : "expired");
         return;
       }
 
@@ -91,8 +88,7 @@ export function useAuth() {
       if (isInvalidToken) {
         purgeSupabaseTokens();
         await supabase.auth.signOut({ scope: "local" });
-        if (currentSession?.user?.id) localStorage.removeItem(lastVerifiedKey(currentSession.user.id));
-        localStorage.removeItem("kleios_last_verified"); // legacy
+        localStorage.removeItem(LAST_VERIFIED_KEY);
         setUser(null);
         setSession(null);
         setAuthState("unauthenticated");
@@ -100,9 +96,9 @@ export function useAuth() {
       }
 
       setUser(null);
-      setAuthState(checkGracePeriod(currentSession?.user?.id) ? "grace" : "expired");
+      setAuthState(checkGracePeriod() ? "grace" : "expired");
     } catch {
-      setAuthState(checkGracePeriod(currentSession?.user?.id) ? "grace" : "expired");
+      setAuthState(checkGracePeriod() ? "grace" : "expired");
     }
   }, [checkGracePeriod, markVerified, purgeSupabaseTokens]);
 
@@ -138,11 +134,11 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, [verifySession]);
 
-  const signUp = useCallback(async (email: string, password: string, cabinetName: string) => {
+  const signUp = useCallback(async (email: string, password: string, cabinetName: string, extraMeta?: Record<string, string>) => {
     setError("");
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { cabinet_name: cabinetName, active: true } },
+      options: { data: { cabinet_name: cabinetName, active: true, ...(extraMeta ?? {}) } },
     });
     if (error) { setError(error.message); return false; }
     return true;
@@ -171,10 +167,8 @@ export function useAuth() {
   }, []);
 
   const signOut = useCallback(async () => {
-    const uid = user?.id;
     await supabase.auth.signOut();
-    if (uid) localStorage.removeItem(lastVerifiedKey(uid));
-    localStorage.removeItem("kleios_last_verified"); // legacy
+    localStorage.removeItem(LAST_VERIFIED_KEY);
     setUser(null);
     setSession(null);
     setAuthState("unauthenticated");

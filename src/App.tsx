@@ -19,30 +19,28 @@ import { LicenceGate } from "./components/LicenceGate";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Dashboard } from "./components/Dashboard";
-import { AgendaView } from "./components/AgendaView";
-import { useCalSync } from "./hooks/useCalSync";
 import { useGoogleCalendar } from "./hooks/useGoogleCalendar";
-import { ContratsView } from "./components/ContratsView";
-import { ConformiteView } from "./components/ConformiteView";
 import { ImportContrats } from "./components/ImportContrats";
-import { GedView } from "./components/GedView";
-import { CommissionsView } from "./components/CommissionsView";
 import { TabMarketing } from "./components/TabMarketing";
 import { MapView } from "./components/MapView";
-import { SeedDemo } from "./components/SeedDemo";
+import { ProspectionView } from "./components/ProspectionView";
+import { SuiviTuteurs } from "./components/SuiviTuteurs";
+import { PipelinePlacement } from "./components/PipelinePlacement";
+import { ReferentielsAdmin } from "./components/ReferentielsAdmin";
+import { useReferentiels } from "./hooks/useReferentiels";
+import { SeedDemoIFC } from "./components/SeedDemoIFC";
 
 type ActiveView =
   | "dashboard"
-  | "clients"
-  | "contrats"
-  | "agenda"
-  | "conformite"
-  | "ged"
-  | "commissions"
-  | "marketing"
+  | "entreprises"
+  | "pipeline"
+  | "suivi"
   | "carte"
+  | "marketing"
   | "admin"
-  | "parametres";
+  | "parametres"
+  | "referentiels"
+  | "prospection";
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -115,13 +113,14 @@ export default function App() {
     loading: contactsLoading,
     createContact,
     saveContact,
+    deleteContact,
     syncNow,
   } = useContacts(userId);
 
   // ── Navigation ──
-  const [activeNav, setActiveNav] = useState<ActiveView>("clients");
+  const [activeNav, setActiveNav] = useState<ActiveView>("entreprises");
   const [isFicheOpen, setIsFicheOpen] = useState(false);
-  const [topbarTitle, setTopbarTitle] = useState("Clients");
+  const [topbarTitle, setTopbarTitle] = useState("Entreprises");
 
   // ── Contact ouvert ──
   const [openContact, setOpenContact] = useState<ContactRecord | null>(null);
@@ -129,6 +128,7 @@ export default function App() {
   // ── Modal création ──
   const [showNewContactModal, setShowNewContactModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [pendingVisite, setPendingVisite] = useState<{ entrepriseId: string; entrepriseNom: string } | null>(null);
 
   // ── Recherche ──
   const [searchValue, setSearchValue] = useState("");
@@ -170,23 +170,18 @@ export default function App() {
   }, [userId]);
 
   // ── Sync Cal.com ──
-  const { orphanBookings, isSyncing: calSyncing, syncError: calError, linkBooking, dismissBooking, getBusySlotsForWeek } = useCalSync(
-    userId,
-    cabinet,
-    contacts,
-    saveContact
-  );
+  // useCalSync désactivé dans Kleios IFC
+
+  // ── Référentiels campus / formations ──
+  const { campus, formations } = useReferentiels();
+  const campusList = campus.map(c => c.nom);
+  const formationList = formations.map(f => f.code);
 
   // ── Google Calendar ──
   const google = useGoogleCalendar(userId);
 
   // ── Fusion des slots Cal.com + Google Calendar ──
-  const getMergedBusySlots = useCallback((weekKey: string) => {
-    const calCache = getBusySlotsForWeek(weekKey);
-    // On retourne le cache Cal.com enrichi des slots Google en temps réel
-    // Les slots Google sont chargés async dans WeekCalendar via fetchBusySlotsForWeek
-    return calCache;
-  }, [getBusySlotsForWeek]);
+
 
   // ── Handlers ──
 
@@ -197,7 +192,11 @@ export default function App() {
     setSearchValue("");
     const titles: Record<string, string> = {
       dashboard:   "Tableau de bord",
-      clients:     "Clients",
+      pipeline:    "Pipeline de placement",
+      suivi:       "Suivi tuteurs",
+      referentiels: "Campus & Formations",
+      prospection:  "Prospection entreprises",
+      clients:     "Entreprises",
       contrats:    "Contrats",
       agenda:      "Agenda & RDV",
       conformite:  "Conformité DDA / MIF2 / KYC",
@@ -214,13 +213,13 @@ export default function App() {
   const handleOpenFiche = useCallback((record: ContactRecord) => {
     setOpenContact(record);
     setIsFicheOpen(true);
-    setTopbarTitle("Fiche client");
+    setTopbarTitle("Fiche entreprise");
   }, []);
 
   const handleCloseFiche = useCallback(() => {
     setIsFicheOpen(false);
     setOpenContact(null);
-    setTopbarTitle("Clients");
+    setTopbarTitle("Entreprises");
   }, []);
 
   const handleNewContact = useCallback(() => {
@@ -237,40 +236,14 @@ export default function App() {
     await auth.signOut();
   }, [auth]);
 
+  const handlePlanifierVisite = useCallback((entrepriseId: string, entrepriseNom: string) => {
+    setPendingVisite({ entrepriseId, entrepriseNom });
+    handleNavChange("suivi");
+  }, [handleNavChange]);
+
   const handleImportContrats = useCallback(() => {
     setShowImport(true);
   }, []);
-
-  const handleDeleteDemo = useCallback(() => {
-    if (!confirm("Supprimer tous les clients de démonstration ?")) return;
-    const nonDemo = contacts.filter(c => !(c as any)._isDemoData);
-    nonDemo.forEach(c => saveContact(c));
-    // Supprimer les contacts démo du localStorage
-    const demoIds = contacts.filter(c => (c as any)._isDemoData).map(c => c.id);
-    demoIds.forEach(_id => {
-      try {
-        const key = `${BRAND.storagePrefix}clients_${userId}`;
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          const all = JSON.parse(raw);
-          const filtered = all.filter((c: any) => !c._isDemoData);
-          localStorage.setItem(key, JSON.stringify(filtered));
-        }
-      } catch { /* ignore */ }
-    });
-    window.location.reload();
-  }, [contacts, saveContact, userId]);
-
-  const handleSeedContacts = useCallback((demoContacts: import("./types/crm").ContactRecord[]) => {
-    if (!userId) return;
-    try {
-      const key = `${BRAND.storagePrefix}contacts_${userId}`;
-      const existing = JSON.parse(localStorage.getItem(key) ?? "[]");
-      const merged = [...existing, ...demoContacts];
-      localStorage.setItem(key, JSON.stringify(merged));
-      window.location.reload();
-    } catch { /* ignore */ }
-  }, [userId]);
 
   const handleAdmin = useCallback(() => {
     setActiveNav("admin");
@@ -330,18 +303,16 @@ export default function App() {
     if (isFicheOpen && openContact) {
       return (
         <FicheClient
+          onTabChange={() => {}}
           record={openContact}
           onSave={(updated) => {
             saveContact(updated);
             setOpenContact(updated);
           }}
           onClose={handleCloseFiche}
+          onPlanifierVisite={handlePlanifierVisite}
           colorNavy={cabinet.colorNavy}
           colorGold={cabinet.colorGold}
-          getBusySlotsForWeek={getMergedBusySlots}
-          fetchGoogleSlotsForWeek={google.isConnected ? google.fetchBusySlotsForWeek : undefined}
-          onCreateGoogleEvent={google.isConnected ? google.createEvent : undefined}
-          cabinet={cabinet}
         />
       );
     }
@@ -355,10 +326,9 @@ export default function App() {
             colorGold={cabinet.colorGold}
             onOpenContact={handleOpenFiche}
             onNavigate={handleNavChange}
-            onSaveContact={saveContact}
           />
         );
-      case "clients":
+      case "entreprises":
         return (
           <ClientList
             contacts={contacts}
@@ -372,63 +342,48 @@ export default function App() {
             colorGold={cabinet.colorGold}
           />
         );
-      case "contrats":
+      case "pipeline":
         return (
-          <ContratsView
+          <PipelinePlacement
             contacts={contacts}
+            userId={userId ?? ""}
             colorNavy={cabinet.colorNavy}
             colorGold={cabinet.colorGold}
-            onOpenContact={handleOpenFiche}
+            campusList={campusList}
+            formationList={formationList}
           />
         );
-      case "agenda":
+      case "suivi":
         return (
-          <AgendaView
+          <SuiviTuteurs
             contacts={contacts}
+            userId={userId ?? ""}
             colorNavy={cabinet.colorNavy}
             colorGold={cabinet.colorGold}
-            rdvUrl={cabinet.rdvUrl}
-            rdvProvider={cabinet.rdvProvider}
-            onOpenContact={handleOpenFiche}
-            orphanBookings={orphanBookings}
-            onLinkBooking={linkBooking}
-            onDismissBooking={dismissBooking}
-            calSyncing={calSyncing}
-            calError={calError}
+            campusRRE={cabinet.campus}
+            defaultEntrepriseId={pendingVisite?.entrepriseId}
+            defaultEntrepriseNom={pendingVisite?.entrepriseNom}
+            onPendingVisiteHandled={() => setPendingVisite(null)}
           />
         );
-      case "conformite":
+      case "referentiels":
+        return <ReferentielsAdmin />;
+      case "prospection":
         return (
-          <ConformiteView
+          <ProspectionView
             contacts={contacts}
+            userId={userId ?? ""}
+            onImport={newRecords => { newRecords.forEach(r => saveContact(r)); }}
             colorNavy={cabinet.colorNavy}
             colorGold={cabinet.colorGold}
-            onOpenContact={handleOpenFiche}
-          />
-        );
-      case "ged":
-        return (
-          <GedView
-            contacts={contacts}
-            colorNavy={cabinet.colorNavy}
-            colorGold={cabinet.colorGold}
-            onOpenContact={handleOpenFiche}
-          />
-        );
-      case "commissions":
-        return (
-          <CommissionsView
-            contacts={contacts}
-            colorNavy={cabinet.colorNavy}
-            colorGold={cabinet.colorGold}
-            onOpenContact={handleOpenFiche}
+              googleApiKey={cabinet.googlePlacesApiKey ?? ""}
           />
         );
       case "carte":
         return (
           <MapView
-            contacts={contacts}
             onSaveContact={saveContact}
+            contacts={contacts}
             onOpenContact={handleOpenFiche}
             onOpenMarketing={(contactIds) => {
               handleNavChange("marketing");
@@ -442,9 +397,9 @@ export default function App() {
       case "marketing":
         return (
           <TabMarketing
-            contacts={contacts}
             cabinet={cabinet}
-            userId={userId ?? ""}
+            contacts={contacts}
+              userId={userId ?? ""}
             colorNavy={cabinet.colorNavy}
             colorGold={cabinet.colorGold}
           />
@@ -453,7 +408,7 @@ export default function App() {
         return (
           <SettingsPanel
             cabinet={cabinet}
-            userId={userId ?? ""}
+              userId={userId ?? ""}
             logoSrc={logoSrc}
             onUpdate={setCabinet}
             onLogoChange={setLogoSrc}
@@ -470,7 +425,7 @@ export default function App() {
           <AdminDashboard
             colorNavy={cabinet.colorNavy}
             colorGold={cabinet.colorGold}
-            onClose={() => handleNavChange("clients")}
+            onClose={() => handleNavChange("entreprises")}
           />
         );
       default:
@@ -485,10 +440,10 @@ export default function App() {
         onNavChange={handleNavChange}
         topbarTitle={topbarTitle}
         isFicheOpen={isFicheOpen}
-        showSearch={activeNav === "clients" && !isFicheOpen}
+        showSearch={activeNav === "entreprises" && !isFicheOpen}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
-        onNewContact={activeNav === "clients" && !isFicheOpen ? handleNewContact : undefined}
+        onNewContact={activeNav === "entreprises" && !isFicheOpen ? handleNewContact : undefined}
         cabinetName={cabinet.cabinetName}
         userEmail={auth.user?.email ?? ""}
         isAdmin={isAdmin}
@@ -513,12 +468,11 @@ export default function App() {
           onClose={() => setShowImport(false)}
         />
       )}
-      <SeedDemo
+      <SeedDemoIFC
         userId={userId ?? ""}
         contacts={contacts}
-        onContactsCreated={handleSeedContacts}
-        onDeleteDemo={handleDeleteDemo}
-        colorNavy={cabinet.colorNavy}
+        onSeed={newRecords => { newRecords.forEach(r => saveContact(r)); }}
+        onClear={ids => { ids.forEach(id => deleteContact(id)); }}
       />
 
       {showNewContactModal && (

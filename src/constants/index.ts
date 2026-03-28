@@ -1,6 +1,5 @@
 // ============================================================
-// KLEIOS CRM — Constantes globales
-// Version 1.1.0 — Intégration Cal.com
+// KLEIOS IFC — Constantes globales
 // ============================================================
 
 // ------------------------------------------------------------
@@ -20,14 +19,13 @@ export const BRAND = {
 // ------------------------------------------------------------
 
 export const DEFAULT_COLORS = {
-  // ── Palette Kleios v2 ──
-  navy:          '#0B3040',   // Pétrol profond — sidebar, headers, texte principal
-  navyLight:     '#144260',   // Pétrol mid — dégradés sidebar
-  gold:          '#C9A84C',   // Gold — logo, accents sidebar, nav actif
-  goldLight:     '#E8D5A3',   // Gold clair — texte sur fond navy
-  slate:         '#5B82A6',   // Slate blue — labels, tabs actifs, focus
-  slateLight:    '#D6E4F0',   // Slate très clair — fonds sections
-  bg:            '#EDE8DF',   // Sand chaud — fond application
+  navy:          '#0B3040',
+  navyLight:     '#144260',
+  gold:          '#C9A84C',
+  goldLight:     '#E8D5A3',
+  slate:         '#5B82A6',
+  slateLight:    '#D6E4F0',
+  bg:            '#EDE8DF',
   white:         '#FFFFFF',
   textPrimary:   '#0B3040',
   textSecondary: '#5E7A88',
@@ -66,6 +64,9 @@ export const DEFAULT_CABINET = {
   calUsername: '',
   senderName: '',
   senderEmail: '',
+  googlePlacesApiKey: '',   // clé Google Places API — saisie par le client dans Paramètres
+  campus: '',               // campus IFC du RRE
+  isAdmin: false,           // accès multi-campus
   commissionRates: [] as Array<{ insurer: string; entree: string; gestion: string; arbitrage: string }>,
   calEventTypes: [] as Array<{
     id: string;
@@ -78,58 +79,39 @@ export const DEFAULT_CABINET = {
 }
 
 // ------------------------------------------------------------
-// 4. LABELS MÉTIER
+// 4. LABELS MÉTIER IFC
 // ------------------------------------------------------------
 
 export const CONTACT_STATUS_LABELS: Record<string, string> = {
+  partenaire: 'Partenaire',
   prospect: 'Prospect',
-  client: 'Client',
-  vip: 'VIP',
   inactif: 'Inactif',
 }
 
+// Conservés pour compatibilité composants hérités — à nettoyer progressivement
 export const CONTRACT_TYPE_LABELS: Record<string, string> = {
-  av: 'Assurance-vie',
-  per: 'PER',
-  scpi: 'SCPI',
-  capitalisation: 'Capitalisation',
-  pea: 'PEA',
-  cto: 'CTO',
-  prevoyance: 'Prévoyance',
-  sante: 'Santé',
-  iard: 'IARD',
-  emprunteur: 'Emprunteur',
-  retraite_collective: 'Retraite collective',
-  autre: 'Autre',
+  av: 'Assurance-vie', per: 'PER', scpi: 'SCPI',
+  capitalisation: 'Capitalisation', pea: 'PEA', cto: 'CTO',
+  prevoyance: 'Prévoyance', sante: 'Santé', iard: 'IARD',
+  emprunteur: 'Emprunteur', retraite_collective: 'Retraite collective', autre: 'Autre',
 }
 
 export const EVENT_TYPE_LABELS: Record<string, string> = {
-  rdv: 'Rendez-vous',
-  note: 'Note',
-  rappel: 'Rappel',
-  email: 'Email',
-  appel: 'Appel',
-  tache: 'Tâche',
+  rdv: 'Rendez-vous', note: 'Note', rappel: 'Rappel',
+  email: 'Email', appel: 'Appel', tache: 'Tâche',
 }
 
 export const EVENT_STATUS_LABELS: Record<string, string> = {
-  planifie: 'Planifié',
-  realise: 'Réalisé',
-  annule: 'Annulé',
-  reporte: 'Reporté',
-  no_show: 'Absent',
+  planifie: 'Planifié', realise: 'Réalisé', annule: 'Annulé',
+  reporte: 'Reporté', no_show: 'Absent',
 }
 
 export const RDV_CHANNEL_LABELS: Record<string, string> = {
-  tel: 'Téléphone',
-  visio: 'Visioconférence',
-  physique: 'Physique',
+  tel: 'Téléphone', visio: 'Visioconférence', physique: 'Physique',
 }
 
 export const RDV_LOCATION_LABELS: Record<string, string> = {
-  cabinet: 'Au cabinet',
-  domicile_client: 'Domicile client',
-  exterieur: 'Lieu extérieur',
+  cabinet: 'Au cabinet', domicile_client: 'Domicile client', exterieur: 'Lieu extérieur',
 }
 
 export const EVENT_SOURCE_LABELS: Record<string, string> = {
@@ -139,107 +121,62 @@ export const EVENT_SOURCE_LABELS: Record<string, string> = {
 }
 
 export const DEAL_STAGE_LABELS: Record<string, string> = {
-  premier_contact: 'Premier contact',
-  decouverte: 'Découverte',
-  proposition: 'Proposition',
-  negociation: 'Négociation',
-  signe: 'Signé',
-  perdu: 'Perdu',
+  premier_contact: 'Premier contact', decouverte: 'Découverte',
+  proposition: 'Proposition', negociation: 'Négociation',
+  signe: 'Signé', perdu: 'Perdu',
 }
 
 export const COMPLIANCE_STATUS_LABELS: Record<string, string> = {
-  a_generer: 'À générer',
-  envoye: 'Envoyé',
-  signe: 'Signé',
-  expire: 'Expiré',
-  na: 'N/A',
+  a_generer: 'À générer', envoye: 'Envoyé', signe: 'Signé',
+  expire: 'Expiré', na: 'N/A',
 }
 
-// ------------------------------------------------------------
-// 5. STRUCTURES VIDES
-// ------------------------------------------------------------
 
 export const EMPTY_PERSON = {
-  firstName: '',
-  lastName: '',
-  usageName: '',
+  firstName: '', lastName: '', usageName: '',
   gender: 'M' as const,
-  birthDate: '',
-  birthPlace: '',
-  birthDepartment: '',
+  birthDate: '', birthPlace: '', birthDepartment: '',
   nationality: 'Française',
-  email: '',
-  phone: '',
-  phonePro: '',
-  address: '',
-  postalCode: '',
-  city: '',
-  csp: '',
-  employer: '',
-  isPPE: false,
-  isFATCA: false,
-  taxCountry: 'France',
-  isHandicapped: false,
+  email: '', phone: '', phonePro: '',
+  address: '', postalCode: '', city: '',
+  csp: '', employer: '',
+  isPPE: false, isFATCA: false,
+  taxCountry: 'France', isHandicapped: false,
 }
 
-export const EMPTY_EVENT = {
-  id: '',
-  contactId: '',
-  userId: '',
-  type: 'rdv' as const,
-  status: 'planifie' as const,
-  title: '',
-  date: '',
-  duration: 0,
-  channel: null as 'tel' | 'visio' | 'physique' | null,
-  location: null as 'cabinet' | 'domicile_client' | 'exterieur' | null,
-  locationAddress: '',
-  source: 'manuel' as const,
-  initiatedBy: 'conseiller' as const,
-  calBookingId: '',
-  calEventTypeSlug: '',
-  calLinked: false,
-  body: '',
-  needsFollowUp: false,
-  followUpDate: '',
-  followUpNote: '',
-  contractIds: [] as string[],
-  rdvLink: '',
-  createdAt: '',
-  updatedAt: '',
-}
+// ------------------------------------------------------------
+// 5. STRUCTURE VIDE PAYLOAD CONTACT
+// ------------------------------------------------------------
 
 export const EMPTY_CONTACT_PAYLOAD = {
   contact: {
-    id: '',
-    userId: '',
-    status: 'prospect' as const,
-    ploutosClientId: null,
-    person1: { ...EMPTY_PERSON },
-    person2: null,
-    civilStatus: 'celibataire' as const,
-    matrimonialRegime: null,
-    weddingDate: '',
-    familyLinks: [],
-    notes: '',
-    createdAt: '',
-    updatedAt: '',
-    syncedAt: null,
+    id: '', userId: '', formeJuridique: '', nom: '', enseigne: '',
+    siret: '', codeApe: '', codeIdcc: '', numeroTva: '',
+    address1: '', address2: '', postalCode: '', city: '',
+    email: '', telFixe: '', telMobile: '', website: '',
+    nbSalaries: '', activite: '', conventionCollective: '',
+    opco: '', caisseRetraite: '', organismePrevoyanc: '',
+    nonAssujeti: false, status: 'prospect' as const,
+    campus: '', notes: '', scoreRelation: 0,
+    prochainerelance: '', createdAt: '', updatedAt: '', syncedAt: null,
   },
-  contracts: [],
-  events: [],
-  deals: [],
-  compliance: null,
-  documents: [],
-  commissions: [],
-  portal: null,
+  contacts: [] as any[],
+  alternants: [] as any[],
+  postes: [] as any[],
+  echanges: [] as any[],
+  documents: [] as any[],
+  // Champs conservés pour compatibilité Supabase jsonb existant
+  contracts: [] as any[],
+  events: [] as any[],
+  deals: [] as any[],
+  compliance: null as any,
+  commissions: [] as any[],
+  portal: null as any,
 }
 
 // ------------------------------------------------------------
-// 6. CAL.COM
+// 6. CAL.COM (conservé pour composants hérités)
 // ------------------------------------------------------------
 
 export const CAL_DEFAULT_DURATIONS = [15, 30, 45, 60, 90, 120] as const
-
-// Délai rappel automatique après annulation sans redécalage (heures)
 export const CAL_CANCELLATION_FOLLOWUP_HOURS = 48

@@ -131,16 +131,15 @@ const Icons = {
 // ── Navigation items ──────────────────────────────────────────────────────────
 
 export const NAV_ITEMS: NavItem[] = [
-  { id: "dashboard",   label: "Tableau de bord",  icon: Icons.dashboard,   section: "Principal" },
-  { id: "clients",     label: "Clients",           icon: Icons.clients },
-  { id: "contrats",    label: "Contrats",          icon: Icons.contrats },
-  { id: "agenda",      label: "Agenda & RDV",      icon: Icons.agenda },
-  { id: "conformite",  label: "DDA / MIF2 / KYC",  icon: Icons.conformite,  section: "Conformité" },
-  { id: "ged",         label: "GED",               icon: Icons.ged },
-  { id: "commissions", label: "Commissions",       icon: Icons.commissions, section: "Finance" },
-  { id: "carte",       label: "Carte clients",       icon: Icons.carte,       section: "Marketing" },
-  { id: "marketing",   label: "Marketing",          icon: Icons.marketing },
-  { id: "parametres",  label: "Paramètres",         icon: Icons.settings,    section: "Cabinet" },
+  { id: "dashboard",   label: "Tableau de bord",   icon: Icons.dashboard,   section: "Principal" },
+  { id: "entreprises", label: "Entreprises",        icon: Icons.clients },
+  { id: "pipeline",    label: "Pipeline placement", icon: Icons.agenda },
+  { id: "suivi",       label: "Suivi tuteurs",      icon: Icons.conformite,  section: "Suivi" },
+  { id: "carte",       label: "Carte entreprises",  icon: Icons.carte,       section: "Outils" },
+  { id: "marketing",   label: "Campagnes",          icon: Icons.marketing },
+  { id: "parametres",    label: "Paramètres",           icon: Icons.settings,    section: "Cabinet" },
+  { id: "referentiels",  label: "Campus & Formations",  icon: Icons.ged },
+  { id: "prospection",   label: "Prospection",            icon: Icons.marketing,   section: "Développement" },
 ];
 
 // ── Composant ─────────────────────────────────────────────────────────────────
@@ -172,7 +171,7 @@ export function Sidebar({
         width: collapsed ? 52 : 220,
         minWidth: collapsed ? 52 : 220,
         background: `linear-gradient(160deg, ${colorNavy}E0 0%, ${colorNavy} 55%, ${colorNavy}F5 100%)`,
-        boxShadow: "inset 1px 0 0 rgba(255,255,255,0.09), 6px 0 24px rgba(8,31,46,0.45), 14px 0 40px rgba(8,31,46,0.18)",
+        boxShadow: "inset 1px 0 0 rgba(255,255,255,0.09), 6px 0 24px rgba(10,18,30,0.45), 14px 0 40px rgba(10,18,30,0.18)",
         borderRight: "1px solid rgba(0,0,0,0.28)",
         position: "relative" as const,
         zIndex: 10,
@@ -185,7 +184,7 @@ export function Sidebar({
       {/* Reflet 3D gauche */}
       <div style={{ position: "absolute", top: 0, left: 0, width: 3, height: "100%", background: "linear-gradient(to bottom, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.04) 40%, transparent 100%)", pointerEvents: "none", zIndex: 1 }} />
       {/* Ombre portée droite 3D */}
-      <div style={{ position: "absolute", top: 0, right: -28, width: 28, height: "100%", background: "linear-gradient(to right, rgba(8,31,46,0.30) 0%, rgba(8,31,46,0.09) 60%, transparent 100%)", pointerEvents: "none", zIndex: 10 }} />
+      <div style={{ position: "absolute", top: 0, right: -28, width: 28, height: "100%", background: "linear-gradient(to right, rgba(10,18,30,0.30) 0%, rgba(10,18,30,0.09) 60%, transparent 100%)", pointerEvents: "none", zIndex: 10 }} />
 
       {/* ── Logo ── */}
       <div style={{
@@ -215,7 +214,7 @@ export function Sidebar({
           ϰ
         </div>
 
-        {/* Nom "KleiΩs" — masqué si collapsed */}
+        {/* Nom "Kleios IFC" — masqué si collapsed */}
         {!collapsed && (
           <div>
             <div style={{
@@ -323,7 +322,7 @@ export function Sidebar({
                 {/* Badge — masqué si collapsed */}
                 {!collapsed && item.badge && item.badge > 0 && (
                   <span style={{
-                    background: colorGold,
+                    background: "#F26522",
                     color: colorNavy,
                     fontSize: 9,
                     fontWeight: 700,
@@ -342,7 +341,7 @@ export function Sidebar({
         {onImportContrats && (
           <button
             onClick={onImportContrats}
-            title={collapsed ? "Importer des contrats" : undefined}
+            title={collapsed ? "Importer entreprises" : undefined}
             style={{
               display: "flex",
               alignItems: "center",

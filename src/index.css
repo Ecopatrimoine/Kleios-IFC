@@ -3,30 +3,44 @@
 @tailwind utilities;
 
 /* ============================================================
-   KLEIOS CRM — Design System Global
-   Palette : Pétrol #0B3040 · Gold #C9A84C · Slate Blue #5B82A6 · Sand #EDE8DF
+   KLEIOS IFC — Design System
+   Palette : Marine #1A2E44 · Orange #F26522 · Bleu #4A7FA5 · Gris #F4F5F7
    ============================================================ */
 
 /* ── Variables CSS globales ── */
 :root {
-  --kleios-petrol:       #0B3040;
-  --kleios-petrol-mid:   #144260;
-  --kleios-gold:         #C9A84C;
-  --kleios-gold-light:   #E8D5A3;
-  --kleios-slate:        #5B82A6;
-  --kleios-slate-light:  #D6E4F0;
-  --kleios-slate-bg:     rgba(91,130,166,0.09);
-  --kleios-sand:         #EDE8DF;
-  --kleios-sand-dark:    #D8D0C4;
-  --kleios-text:         #0B3040;
-  --kleios-text-muted:   #5E7A88;
-  --kleios-text-hint:    #8FAAB6;
-  --kleios-border:       rgba(11,48,64,0.10);
-  --kleios-border-strong:rgba(11,48,64,0.17);
-  --kleios-card-bg:      rgba(255,255,255,0.92);
-  --kleios-success:      #2E8B6E;
-  --kleios-warning:      #D97706;
-  --kleios-danger:       #DC2626;
+  /* Marine */
+  --ifc-navy:            #1A2E44;
+  --ifc-navy-mid:        #2A4A6B;
+  --ifc-navy-light:      #3A6080;
+
+  /* Orange IFC — 5 variations */
+  --ifc-orange:          #F26522;   /* Principal — CTA, actif, accent */
+  --ifc-orange-light:    #F5855A;   /* Hover, dégradés */
+  --ifc-orange-pale:     #FBD0BC;   /* Fonds badges, highlights subtils */
+  --ifc-orange-dark:     #C94E0A;   /* Hover foncé, texte sur fond clair */
+  --ifc-orange-xdark:    #9A3A05;   /* Extrême — rare, alertes fortes */
+
+  /* Bleu secondaire */
+  --ifc-blue:            #4A7FA5;
+  --ifc-blue-light:      #D0E4F2;
+  --ifc-blue-bg:         rgba(74,127,165,0.09);
+
+  /* Neutres */
+  --ifc-bg:              #F4F5F7;
+  --ifc-bg-dark:         #E8EAED;
+  --ifc-white:           #FFFFFF;
+  --ifc-text:            #1A2E44;
+  --ifc-text-mid:        #4A6080;
+  --ifc-text-muted:      #7A9AB0;
+  --ifc-border:          rgba(26,46,68,0.10);
+  --ifc-border-strong:   rgba(26,46,68,0.17);
+  --ifc-card-bg:         rgba(255,255,255,0.96);
+
+  /* Sémantique */
+  --ifc-success:         #2E8B6E;
+  --ifc-warning:         #D97706;
+  --ifc-danger:          #DC2626;
 }
 
 /* ── Reset & base ── */
@@ -38,25 +52,20 @@ html, body, #root {
   padding: 0;
   font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
   font-size: 14px;
-  color: var(--kleios-text);
+  color: var(--ifc-text);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Fond application — sable chaud + micro-grille + formes géométriques ── */
+/* ── Fond application IFC — gris propre + légère texture ── */
 #root {
-  background-color: var(--kleios-sand);
+  background-color: var(--ifc-bg);
   background-image:
-    /* Micro-grille de points */
-    radial-gradient(circle, rgba(184,168,130,0.55) 1px, transparent 1px),
-    /* Losange filigrane haut-droit — signature Kleios */
-    linear-gradient(
-      transparent 0%, transparent 100%
-    );
+    radial-gradient(circle, rgba(26,46,68,0.04) 1px, transparent 1px);
   background-size: 28px 28px;
   position: relative;
 }
 
-/* Formes géométriques en pseudo-element */
+/* Formes géométriques en arrière-plan */
 #root::before {
   content: '';
   position: fixed;
@@ -64,55 +73,48 @@ html, body, #root {
   pointer-events: none;
   z-index: 0;
   background-image:
-    /* Arc bas-gauche */
-    radial-gradient(ellipse 440px 440px at -20px 100%, rgba(11,48,64,0.06) 0%, transparent 70%),
-    /* Halo losange haut-droit en slate */
-    radial-gradient(ellipse 320px 320px at 100% 0%, rgba(91,130,166,0.07) 0%, transparent 70%),
-    /* Diagonal subtile gold */
-    linear-gradient(135deg, transparent 60%, rgba(201,168,76,0.04) 100%);
+    radial-gradient(ellipse 500px 500px at -40px 100%, rgba(26,46,68,0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 400px at 100% 0%, rgba(242,101,34,0.06) 0%, transparent 70%),
+    linear-gradient(135deg, transparent 65%, rgba(242,101,34,0.03) 100%);
 }
 
-/* Toutes les vues au-dessus du pseudo-element */
 #root > * { position: relative; z-index: 1; }
 
-/* ── Scrollbar fine et discrète ── */
+/* ── Scrollbar ── */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(11,48,64,0.18) transparent;
+  scrollbar-color: rgba(26,46,68,0.18) transparent;
 }
 *::-webkit-scrollbar { width: 5px; height: 5px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb {
-  background: rgba(11,48,64,0.18);
-  border-radius: 3px;
-}
-*::-webkit-scrollbar-thumb:hover { background: rgba(11,48,64,0.28); }
+*::-webkit-scrollbar-thumb { background: rgba(26,46,68,0.18); border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(26,46,68,0.30); }
 
 /* ── Cards ── */
 .kleios-card {
-  background: var(--kleios-card-bg);
+  background: var(--ifc-card-bg);
   border-radius: 10px;
-  border: 1px solid var(--kleios-border);
+  border: 1px solid var(--ifc-border);
+  box-shadow: 0 1px 4px rgba(26,46,68,0.06);
 }
 
-/* En-tête de section card — fond sable doux + point slate */
 .kleios-card-header {
   padding: 11px 16px;
-  background: rgba(214,228,240,0.38);
-  border-bottom: 1px solid rgba(91,130,166,0.13);
+  background: rgba(208,228,242,0.35);
+  border-bottom: 1px solid rgba(74,127,165,0.13);
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--kleios-petrol);
+  color: var(--ifc-navy);
 }
 
-/* ── Labels de champs — slate blue lisible ── */
+/* ── Labels ── */
 .kleios-label {
   font-size: 10px;
   font-weight: 600;
-  color: var(--kleios-slate);
+  color: var(--ifc-blue);
   letter-spacing: 0.4px;
   margin-bottom: 4px;
   display: block;
@@ -121,34 +123,29 @@ html, body, #root {
 /* ── Inputs ── */
 .kleios-input {
   height: 32px;
-  background: #F6F8FA;
-  border: 1px solid var(--kleios-border-strong);
+  background: #F8F9FB;
+  border: 1px solid var(--ifc-border-strong);
   border-radius: 7px;
   padding: 0 10px;
   font-size: 12px;
   font-family: inherit;
-  color: var(--kleios-text);
+  color: var(--ifc-text);
   width: 100%;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .kleios-input:focus {
-  border-color: var(--kleios-slate);
+  border-color: var(--ifc-orange);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(91,130,166,0.12);
+  box-shadow: 0 0 0 3px rgba(242,101,34,0.12);
 }
-.kleios-input::placeholder { color: var(--kleios-text-hint); }
+.kleios-input::placeholder { color: var(--ifc-text-muted); }
 
-textarea.kleios-input {
-  height: auto;
-  padding: 8px 10px;
-  resize: vertical;
-}
-
+textarea.kleios-input { height: auto; padding: 8px 10px; resize: vertical; }
 select.kleios-input {
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235B82A6' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234A7FA5' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   padding-right: 28px;
@@ -157,16 +154,15 @@ select.kleios-input {
 /* ── Tabs ── */
 .kleios-tabs {
   display: flex;
-  background: rgba(255,255,255,0.75);
+  background: rgba(255,255,255,0.80);
   border-radius: 10px;
-  border: 1px solid var(--kleios-border);
+  border: 1px solid var(--ifc-border);
   overflow: hidden;
 }
-
 .kleios-tab {
   padding: 10px 16px;
   font-size: 12px;
-  color: var(--kleios-text-hint);
+  color: var(--ifc-text-muted);
   cursor: pointer;
   flex: 1;
   text-align: center;
@@ -174,21 +170,35 @@ select.kleios-input {
   transition: all 0.15s;
   white-space: nowrap;
 }
-
-.kleios-tab:hover { color: var(--kleios-text-muted); background: rgba(237,232,223,0.4); }
-
+.kleios-tab:hover { color: var(--ifc-text-mid); background: rgba(242,101,34,0.04); }
 .kleios-tab.active {
-  color: var(--kleios-slate);
+  color: var(--ifc-orange);
   font-weight: 600;
-  border-bottom: 2px solid var(--kleios-slate);
-  background: var(--kleios-slate-light);
-  background: rgba(214,228,240,0.55);
+  border-bottom: 2px solid var(--ifc-orange);
+  background: rgba(242,101,34,0.06);
 }
 
 /* ── Boutons ── */
 .kleios-btn-primary {
   padding: 7px 16px;
-  background: var(--kleios-petrol);
+  background: var(--ifc-orange);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.kleios-btn-primary:hover {
+  background: var(--ifc-orange-dark);
+  box-shadow: 0 3px 10px rgba(242,101,34,0.30);
+}
+
+.kleios-btn-navy {
+  padding: 7px 16px;
+  background: var(--ifc-navy);
   color: #fff;
   border: none;
   border-radius: 7px;
@@ -198,20 +208,24 @@ select.kleios-input {
   cursor: pointer;
   transition: background 0.15s;
 }
-.kleios-btn-primary:hover { background: var(--kleios-petrol-mid); }
+.kleios-btn-navy:hover { background: var(--ifc-navy-mid); }
 
 .kleios-btn-outline {
   padding: 7px 14px;
-  background: rgba(255,255,255,0.85);
-  color: var(--kleios-petrol);
-  border: 1px solid var(--kleios-border-strong);
+  background: rgba(255,255,255,0.90);
+  color: var(--ifc-navy);
+  border: 1px solid var(--ifc-border-strong);
   border-radius: 7px;
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
 }
-.kleios-btn-outline:hover { background: #fff; border-color: var(--kleios-slate); color: var(--kleios-slate); }
+.kleios-btn-outline:hover {
+  background: #fff;
+  border-color: var(--ifc-orange);
+  color: var(--ifc-orange);
+}
 
 .kleios-btn-ghost {
   padding: 5px 10px;
@@ -221,12 +235,12 @@ select.kleios-input {
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
-  color: var(--kleios-text-muted);
+  color: var(--ifc-text-mid);
   transition: background 0.12s;
 }
-.kleios-btn-ghost:hover { background: rgba(11,48,64,0.06); color: var(--kleios-petrol); }
+.kleios-btn-ghost:hover { background: rgba(26,46,68,0.06); color: var(--ifc-navy); }
 
-/* ── Badges statut ── */
+/* ── Badges ── */
 .kleios-badge {
   display: inline-flex;
   align-items: center;
@@ -235,35 +249,36 @@ select.kleios-input {
   font-size: 10px;
   font-weight: 500;
 }
-.kleios-badge-vip    { background: rgba(201,168,76,0.15); color: #A07A1E; border: 1px solid rgba(201,168,76,0.28); }
-.kleios-badge-client { background: rgba(46,139,110,0.12); color: #1E6B52; border: 1px solid rgba(46,139,110,0.22); }
-.kleios-badge-prospect { background: rgba(91,130,166,0.12); color: #3A6080; border: 1px solid rgba(91,130,166,0.22); }
-.kleios-badge-inactif { background: rgba(11,48,64,0.07); color: var(--kleios-text-muted); border: 1px solid rgba(11,48,64,0.12); }
-.kleios-badge-success { background: rgba(46,139,110,0.12); color: #1E6B52; border: 1px solid rgba(46,139,110,0.22); }
-.kleios-badge-warning { background: rgba(217,119,6,0.12); color: #92520B; border: 1px solid rgba(217,119,6,0.22); }
-.kleios-badge-danger  { background: rgba(220,38,38,0.10); color: #991B1B; border: 1px solid rgba(220,38,38,0.18); }
-.kleios-badge-slate   { background: rgba(91,130,166,0.12); color: #3A6080; border: 1px solid rgba(91,130,166,0.22); }
+.kleios-badge-orange   { background: rgba(242,101,34,0.12); color: #C94E0A; border: 1px solid rgba(242,101,34,0.25); }
+.kleios-badge-vip      { background: rgba(242,101,34,0.15); color: #9A3A05; border: 1px solid rgba(242,101,34,0.28); }
+.kleios-badge-client   { background: rgba(46,139,110,0.12); color: #1E6B52; border: 1px solid rgba(46,139,110,0.22); }
+.kleios-badge-prospect { background: rgba(74,127,165,0.12); color: #2A5A7A; border: 1px solid rgba(74,127,165,0.22); }
+.kleios-badge-inactif  { background: rgba(26,46,68,0.07);   color: var(--ifc-text-muted); border: 1px solid rgba(26,46,68,0.12); }
+.kleios-badge-success  { background: rgba(46,139,110,0.12); color: #1E6B52; border: 1px solid rgba(46,139,110,0.22); }
+.kleios-badge-warning  { background: rgba(217,119,6,0.12);  color: #92520B; border: 1px solid rgba(217,119,6,0.22); }
+.kleios-badge-danger   { background: rgba(220,38,38,0.10);  color: #991B1B; border: 1px solid rgba(220,38,38,0.18); }
 
 /* ── Topbar ── */
 .kleios-topbar {
-  background: rgba(237,232,223,0.96);
-  border-bottom: 1px solid var(--kleios-border);
+  background: rgba(255,255,255,0.97);
+  border-bottom: 1px solid var(--ifc-border);
   height: 54px;
   padding: 0 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  box-shadow: 0 1px 6px rgba(26,46,68,0.06);
 }
 
-/* ── Sidebar ── */
+/* ── Sidebar IFC ── */
 .kleios-sidebar {
-  background: linear-gradient(160deg, #144260 0%, #0B3040 60%, #081F2E 100%);
+  background: linear-gradient(160deg, #2A4A6B 0%, #1A2E44 55%, #111E2E 100%);
   box-shadow:
-    inset 1px 0 0 rgba(255,255,255,0.07),
-    4px 0 18px rgba(8,31,46,0.38),
-    8px 0 36px rgba(8,31,46,0.16);
-  border-right: 1px solid rgba(0,0,0,0.25);
+    inset 1px 0 0 rgba(255,255,255,0.06),
+    4px 0 18px rgba(10,18,30,0.40),
+    8px 0 36px rgba(10,18,30,0.18);
+  border-right: 1px solid rgba(0,0,0,0.28);
   position: relative;
   flex-shrink: 0;
   display: flex;
@@ -271,37 +286,32 @@ select.kleios-input {
   transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Reflet 3D gauche */
+/* Trait orange en haut de la sidebar — signature IFC */
 .kleios-sidebar::before {
   content: '';
   position: absolute;
-  top: 0; left: 0;
-  width: 3px; height: 100%;
-  background: linear-gradient(to bottom,
-    rgba(255,255,255,0.11) 0%,
-    rgba(255,255,255,0.04) 40%,
-    transparent 100%
-  );
-  pointer-events: none;
-  z-index: 1;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ifc-orange) 0%, var(--ifc-orange-light) 100%);
+  z-index: 2;
 }
 
-/* Ombre portée droite — effet 3D */
+/* Ombre portée droite */
 .kleios-sidebar::after {
   content: '';
   position: absolute;
   top: 0; right: -22px;
   width: 22px; height: 100%;
   background: linear-gradient(to right,
-    rgba(8,31,46,0.20) 0%,
-    rgba(8,31,46,0.07) 55%,
+    rgba(10,18,30,0.22) 0%,
+    rgba(10,18,30,0.07) 55%,
     transparent 100%
   );
   pointer-events: none;
   z-index: 10;
 }
 
-/* Nav item sidebar */
+/* Nav item */
 .kleios-nav-item {
   display: flex;
   align-items: center;
@@ -313,10 +323,32 @@ select.kleios-input {
   transition: background 0.13s;
   border: 1px solid transparent;
 }
-.kleios-nav-item:hover { background: rgba(255,255,255,0.06); }
+.kleios-nav-item:hover { background: rgba(255,255,255,0.07); }
 .kleios-nav-item.active {
-  background: rgba(201,168,76,0.16);
-  border: 1px solid rgba(201,168,76,0.28);
+  background: rgba(242,101,34,0.18);
+  border: 1px solid rgba(242,101,34,0.32);
+}
+
+/* ── Fiche header ── */
+.kleios-fiche-header {
+  background: linear-gradient(135deg, #1A2E44 0%, #2A4A6B 100%);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 4px 20px rgba(26,46,68,0.22);
+  margin-bottom: 14px;
+}
+
+/* Barre orange sur le header fiche */
+.kleios-fiche-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ifc-orange), var(--ifc-orange-light));
+  border-radius: 12px 12px 0 0;
 }
 
 /* ── Animations ── */
@@ -326,30 +358,11 @@ select.kleios-input {
 }
 .kleios-fade-in { animation: fadeIn 0.2s ease; }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.7; transform: scale(0.95); }
-}
-
-/* ── Fiche client — header petrol ── */
-.kleios-fiche-header {
-  background: linear-gradient(135deg, #0B3040 0%, #144260 100%);
-  border-radius: 12px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  box-shadow: 0 4px 20px rgba(11,48,64,0.20);
-  margin-bottom: 14px;
-}
-
 /* ── Utilitaires ── */
-.kleios-dot-gold { width: 8px; height: 8px; border-radius: 50%; background: var(--kleios-gold); }
-.kleios-dot-slate { width: 8px; height: 8px; border-radius: 50%; background: var(--kleios-slate); }
-.kleios-dot-success { width: 8px; height: 8px; border-radius: 50%; background: var(--kleios-success); }
-
-.kleios-divider { height: 1px; background: var(--kleios-border); margin: 12px 0; }
-
-.kleios-text-label { font-size: 10px; font-weight: 600; color: var(--kleios-slate); letter-spacing: 0.4px; }
-.kleios-text-muted  { font-size: 11px; color: var(--kleios-text-muted); }
-.kleios-text-hint   { font-size: 10px; color: var(--kleios-text-hint); }
+.kleios-dot-orange { width: 8px; height: 8px; border-radius: 50%; background: var(--ifc-orange); }
+.kleios-dot-blue   { width: 8px; height: 8px; border-radius: 50%; background: var(--ifc-blue); }
+.kleios-dot-success { width: 8px; height: 8px; border-radius: 50%; background: var(--ifc-success); }
+.kleios-divider { height: 1px; background: var(--ifc-border); margin: 12px 0; }
+.kleios-text-label { font-size: 10px; font-weight: 600; color: var(--ifc-blue); letter-spacing: 0.4px; }
+.kleios-text-muted  { font-size: 11px; color: var(--ifc-text-mid); }
+.kleios-text-hint   { font-size: 10px; color: var(--ifc-text-muted); }
