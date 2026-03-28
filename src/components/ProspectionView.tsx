@@ -31,6 +31,7 @@ interface ApiDirigeant {
 interface ApiEntreprise {
   siren:                    string;
   nom_raison_sociale:       string;
+  nom_commercial:           string | null;
   dirigeants:               ApiDirigeant[] | null;
   date_creation:            string | null;
   siege: {
@@ -43,8 +44,6 @@ interface ApiEntreprise {
     activite_principale:          string;
     libelle_activite_principale:  string;
     tranche_effectif_salarie:     string | null;
-    nom_commercial:               string | null;
-    liste_enseignes:              string[] | null;
   };
   nature_juridique:         string;
   libelle_nature_juridique: string;
@@ -68,6 +67,8 @@ interface EnrichedData {
   address:       string | null;
   rating:        number | null;
   ratingCount:   number | null;
+  email:         string | null;          // email trouvé par scraping du site web
+  scrapeStatus:  "idle" | "loading" | "done" | "none";
 }
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -76,6 +77,7 @@ const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  ?? "";
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 const API_PROXY     = `${SUPABASE_URL}/functions/v1/search-entreprises`;
 const ENRICH_PROXY  = `${SUPABASE_URL}/functions/v1/enrich-entreprise`;
+const SCRAPE_PROXY  = `${SUPABASE_URL}/functions/v1/scrape-contact`;
 const DRAWER_WIDTH  = 400;
 
 const EFFECTIF_LABELS: Record<string, string> = {
@@ -143,13 +145,9 @@ function getPrincipalDirigeant(e: ApiEntreprise): { nom: string; qualite: string
 }
 
 function getNomCommercial(e: ApiEntreprise): string | null {
-  // L'API retourne le nom commercial dans siege.nom_commercial (pas à la racine)
-  // siege.liste_enseignes contient les enseignes supplémentaires déclarées
-  const nc   = e.siege.nom_commercial?.trim();
-  const ens  = e.siege.liste_enseignes?.[0]?.trim();
-  const best = nc || ens || null;
-  if (!best || best === e.nom_raison_sociale.trim()) return null;
-  return best;
+  const nc = e.nom_commercial?.trim();
+  if (!nc || nc === e.nom_raison_sociale.trim()) return null;
+  return nc;
 }
 
 function isAlreadyInKleios(siret: string, contacts: ContactRecord[]): boolean {
@@ -194,7 +192,7 @@ function buildContactRecord(
         address2:            "",
         postalCode:          e.siege.code_postal ?? "",
         city:                e.siege.libelle_commune ?? "",
-        email:               "",
+        email:               enriched?.email ?? "",
         telFixe:             enriched?.tel ?? "",
         telMobile:           "",
         website:             enriched?.website ?? "",
@@ -298,6 +296,7 @@ interface EnrichDrawerProps {
   onClose:      () => void;
   onImport:     (e: ApiEntreprise, enriched: EnrichedData | null) => void;
   onGoogleEnrich?: (e: ApiEntreprise) => void;
+  onScrapeEmail?:  (siret: string) => void;
   googleApiKey?: string;
   colorNavy:    string;
   colorGold:    string;
@@ -305,7 +304,7 @@ interface EnrichDrawerProps {
 
 function EnrichDrawer({
   entreprise, enriched, enriching, enrichingSet,
-  onClose, onImport, onGoogleEnrich, googleApiKey,
+  onClose, onImport, onGoogleEnrich, onScrapeEmail, googleApiKey,
   colorNavy, colorGold,
 }: EnrichDrawerProps) {
   const e      = entreprise;
@@ -582,6 +581,47 @@ function EnrichDrawer({
                 >
                   🔍 Rechercher sur Google Places
                 </button>
+              )}
+
+              {/* Email — scraping du site web */}
+              {enriched?.website && (
+                <div style={{ marginBottom: 14 }}>
+                  {enriched.email ? (
+                    <InfoRow
+                      icon="📧" label="Email (site web)"
+                      value={
+                        <a href={`mailto:${enriched.email}`}
+                          style={{ color: colorNavy, fontWeight: 600, textDecoration: "none", fontSize: 13 }}>
+                          {enriched.email}
+                        </a>
+                      }
+                    />
+                  ) : enriched.scrapeStatus === "loading" ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#6B7280" }}>
+                      <span style={{
+                        display: "inline-block", width: 12, height: 12,
+                        border: `1.5px solid ${colorNavy}`, borderTopColor: "transparent",
+                        borderRadius: "50%", animation: "spin 0.7s linear infinite",
+                      }} />
+                      Recherche de l'email…
+                    </div>
+                  ) : enriched.scrapeStatus === "none" ? (
+                    <div style={{ fontSize: 11, color: "#9CA3AF" }}>Aucun email trouvé sur le site</div>
+                  ) : (
+                    <button
+                      onClick={() => onScrapeEmail?.(e.siege.siret)}
+                      style={{
+                        width: "100%", padding: "8px", borderRadius: 8,
+                        border: "1px solid #D1FAE5", background: "#ECFDF5",
+                        color: "#059669", fontSize: 12, fontWeight: 600,
+                        cursor: "pointer", fontFamily: "inherit",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      }}
+                    >
+                      📧 Chercher l'email sur le site
+                    </button>
+                  )}
+                </div>
               )}
 
               <div style={{ height: 1, background: "rgba(26,46,68,0.08)", marginBottom: 16 }} />
@@ -956,11 +996,14 @@ export function ProspectionView({
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: EnrichedData = await res.json();
-      setEnrichedMap(prev => ({ ...prev, [siret]: data }));
+      setEnrichedMap(prev => ({
+        ...prev,
+        [siret]: { ...data, email: data.email ?? null, scrapeStatus: data.scrapeStatus ?? "idle" },
+      }));
     } catch {
       setEnrichedMap(prev => ({
         ...prev,
-        [siret]: { tel: null, website: null, sourceContact: "none", hours: null, address: null, rating: null, ratingCount: null },
+        [siret]: { tel: null, website: null, sourceContact: "none", hours: null, address: null, rating: null, ratingCount: null, email: null, scrapeStatus: "idle" },
       }));
     } finally {
       setEnrichingSet(prev => { const s = new Set(prev); s.delete(siret); return s; });
@@ -1010,6 +1053,41 @@ export function ProspectionView({
   }, [enrichingSet, enrichedMap, googleApiKey]);
 
   // ── Import ────────────────────────────────────────────────────────────────
+
+  /** Scrape le site web de l'entreprise pour en extraire l'email de contact */
+  const handleScrapeEmail = useCallback(async (siret: string) => {
+    const enriched = enrichedMap[siret];
+    if (!enriched?.website || enriched.scrapeStatus === "loading") return;
+
+    setEnrichedMap(prev => ({
+      ...prev,
+      [siret]: { ...prev[siret], scrapeStatus: "loading" },
+    }));
+
+    try {
+      const res = await fetch(SCRAPE_PROXY, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON },
+        body:    JSON.stringify({ website: enriched.website }),
+        signal:  AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data: { email: string | null } = await res.json();
+      setEnrichedMap(prev => ({
+        ...prev,
+        [siret]: {
+          ...prev[siret],
+          email:        data.email,
+          scrapeStatus: data.email ? "done" : "none",
+        },
+      }));
+    } catch {
+      setEnrichedMap(prev => ({
+        ...prev,
+        [siret]: { ...prev[siret], scrapeStatus: "none" },
+      }));
+    }
+  }, [enrichedMap]);
 
   const handleImportFromDrawer = useCallback((e: ApiEntreprise, enriched: EnrichedData | null) => {
     onImport([buildContactRecord(e, userId, enriched)]);
@@ -1434,6 +1512,7 @@ export function ProspectionView({
         onClose={() => setDrawerSiret(null)}
         onImport={handleImportFromDrawer}
         onGoogleEnrich={handleGoogleEnrich}
+        onScrapeEmail={handleScrapeEmail}
         googleApiKey={googleApiKey}
         colorNavy={colorNavy}
         colorGold={colorGold}
