@@ -220,11 +220,21 @@ export function useAdminDashboard(isAdmin: boolean) {
     }
   }, [fetchUsers]);
 
-  const resetUserPassword = useCallback(async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    });
-    return !error;
+  const resetUserPassword = useCallback(async (email: string, firstName?: string) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "reset_password", email, first_name: firstName ?? "" }),
+        }
+      );
+      const data = await res.json();
+      return !data.error;
+    } catch {
+      return false;
+    }
   }, []);
 
   // Suppression complète d'un compte Kleios
